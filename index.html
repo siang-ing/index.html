@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>2026 店務雲端系統 旗艦版</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { 
+      --accent: #bb86fc; 
+      --bg: #121212; 
+      --card: rgba(255,255,255,0.05); 
+      --text: #ffffff; 
+      --hint: #03dac6; 
+      --danger: #ff5252; 
+      --input-bg: rgba(255,255,255,0.1); 
+    }
+    body { 
+      background-color: var(--bg); 
+      color: var(--text); 
+      font-family: -apple-system, sans-serif; 
+      padding-bottom: 100px; 
+      transition: background 0.3s, color 0.3s;
+    }
+    #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .mobile-card { background: var(--card); border-radius: 15px; padding: 18px; margin: 10px 15px 20px 15px; border-left: 5px solid var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
+    .card-date { font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+    .form-label { font-size: 0.85rem; color: var(--text); opacity: 1; margin-bottom: 4px; font-weight: bold; }
+    .form-control-mobile { height: 48px !important; background-color: var(--input-bg) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: var(--text) !important; font-size: 1rem !important; border-radius: 8px; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 80px; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+    .nav-item { text-align: center; color: #888; text-decoration: none; font-size: 0.65rem; flex: 1; cursor: pointer; transition: 0.2s; }
+    .nav-item.active { color: var(--accent); transform: scale(1.1); }
+    .nav-item i { display: block; font-size: 1.4rem; margin-bottom: 2px; font-style: normal; }
+    .page-content { display: none; padding: 10px 0; }
+    .page-content.active { display: block; }
+    
+    /* 修正文字看不見的問題 */
+    .balance-header { background: var(--card); padding: 15px; margin: 10px 15px; border-radius: 10px; border-left: 5px solid var(--hint); font-weight: bold; color: var(--text) !important; }
+    .page-total-bar { background: rgba(187, 134, 252, 0.15); padding: 12px; margin: 0 15px 10px 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; font-weight: bold; color: var(--text); }
+    
+    .dynamic-item-row { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); }
+    .total-summary { background: var(--card); border-radius: 10px; padding: 15px; margin: 10px 15px 20px 15px; border: 1px solid var(--accent); color: var(--text); }
+    .report-card { background: var(--card); padding: 12px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--accent); height: 100%; color: var(--text); }
+    .report-val { font-size: 1.1rem; font-weight: 900; color: var(--text); display: block; margin-top: 4px; }
+    .report-pct { font-size: 0.75rem; color: var(--hint); font-weight: bold; }
+    .admin-only { border: 2px solid var(--danger) !important; }
+  </style>
+</head>
+<body data-theme="dark">
+
+<div id="login-overlay">
+  <div class="container p-4" style="max-width: 400px;">
+    <h3 class="text-center mb-4" style="color: var(--accent); letter-spacing: 3px;">2026 店務系統</h3>
+    <div class="mb-3">
+      <label class="form-label">使用者</label>
+      <select id="user-select" class="form-select form-control-mobile"></select>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">密碼</label>
+      <input type="password" id="login-pwd" class="form-control form-control-mobile" inputmode="numeric">
+    </div>
+    <button class="btn btn-primary w-100 py-3" onclick="authLogin()" style="font-weight: bold; background: var(--accent); border:none;">進入系統</button>
+  </div>
+</div>
+
+<div id="app" style="display: none;">
+  <div id="pageA" class="page-content active">
+    <h4 class="text-center mb-3">A. 營收明細表</h4>
+    <div class="total-summary row g-0 text-center">
+      <div class="col-4 border-end">總營業額<br><b id="total-rev" class="text-info">0</b></div>
+      <div class="col-4 border-end">酒水營收<br><b id="total-alc-rev" class="text-warning">0</b></div>
+      <div class="col-4">總外帶<br><b id="total-takeout" class="text-success">0</b></div>
+    </div>
+    <div id="listA"></div>
+  </div>
+
+  <div id="pageB" class="page-content">
+    <div class="balance-header">上月零用餘額: <input type="number" id="prevPetty" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
+    <div class="page-total-bar">B 頁當月總支出: <span id="page-total-b" class="text-danger">0</span></div>
+    <div id="listB"></div>
+    <div class="total-summary"><h6 class="mb-2">B. 零用金月支出統計</h6><div id="summaryB" class="row g-2" style="font-size:0.85rem;"></div></div>
+  </div>
+
+  <div id="pageC" class="page-content">
+    <div class="balance-header">上月銀行餘額: <input type="number" id="prevBank" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
+    <div class="page-total-bar">C 頁當月總支出: <span id="page-total-c" class="text-danger">0</span></div>
+    <div id="listC"></div>
+    <div class="total-summary"><h6 class="mb-2">C. 銀行月收支統計</h6><div id="summaryC" class="row g-2" style="font-size:0.85rem;"></div></div>
+  </div>
+
+  <div id="pageD" class="page-content">
+    <h4 class="text-center mb-3">D. 月結廠商進貨</h4>
+    <div class="page-total-bar">D 頁當月進貨總額: <span id="page-total-d" class="text-danger">0</span></div>
+    <div id="listD"></div>
+    <div class="total-summary"><h6 class="mb-2">D. 進貨總額統計</h6><div id="summaryD" class="row g-2" style="font-size:0.85rem;"></div></div>
+  </div>
+
+  <div id="pageE" class="page-content">
+    <h4 class="text-center mb-3">E. 當月損益報表</h4>
+    <div class="balance-header">房租支出設定: <input type="number" id="rentInput" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
+    <div id="reportArea" class="row g-3 px-3"></div>
+  </div>
+
+  <div id="pageF" class="page-content">
+    <h4 class="text-center mb-3 text-danger">F. 系統管理中心</h4>
+    <div class="px-3">
+      <div class="mobile-card admin-only">
+        <h6>1. 支付方式設定 (A頁)</h6>
+        <div id="config-pay"></div>
+        <button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('pay')">+ 新增支付方式</button>
+      </div>
+      <div class="mobile-card admin-only">
+        <h6>2. 零用金類別 (B頁)</h6>
+        <div id="config-catsB"></div>
+        <button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsB')">+ 新增類別</button>
+      </div>
+      <div class="mobile-card admin-only">
+        <h6>3. 銀行收支類別 (C頁)</h6>
+        <div id="config-catsC"></div>
+        <button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsC')">+ 新增類別</button>
+      </div>
+      <div class="mobile-card admin-only">
+        <h6>4. 進貨廠商品項 (D頁)</h6>
+        <div id="config-catsD"></div>
+        <button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsD')">+ 新增廠商</button>
+      </div>
+      <div class="mobile-card">
+        <h6>5. 視覺自定義</h6>
+        <label class="form-label">背景顏色</label>
+        <input type="color" id="cfg-bg-color" class="form-control mb-2" onchange="updateTheme()">
+        <label class="form-label">模組主題色 (Accent)</label>
+        <input type="color" id="cfg-accent-color" class="form-control mb-2" onchange="updateTheme()">
+        <button class="btn btn-sm btn-warning w-100" onclick="saveConfig()">儲存所有設定並更新系統</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageG" class="page-content">
+    <h4 class="text-center mb-3 text-danger">G. 使用者權限管理</h4>
+    <div class="px-3">
+      <div id="user-list-area"></div>
+      <div class="mobile-card admin-only">
+        <h6>新增使用者</h6>
+        <input type="text" id="new-username" class="form-control-mobile w-100 mb-2" placeholder="帳號">
+        <input type="password" id="new-password" class="form-control-mobile w-100 mb-2" placeholder="密碼">
+        <input type="text" id="new-hint" class="form-control-mobile w-100 mb-2" placeholder="安全問題/備註">
+        <button class="btn btn-success w-100" onclick="addUser()">確認新增</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" onclick="showPage('A')"><i>📊</i>營收</div>
+    <div class="nav-item" onclick="showPage('B')"><i>💸</i>零用</div>
+    <div class="nav-item" onclick="showPage('C')"><i>🏦</i>銀行</div>
+    <div class="nav-item" onclick="showPage('D')"><i>🚚</i>進貨</div>
+    <div class="nav-item" onclick="showPage('E')"><i>📈</i>報表</div>
+    <div class="nav-item text-danger admin-btn" style="display:none" onclick="showPage('F')"><i>⚙️</i>後台</div>
+    <div class="nav-item text-danger admin-btn" style="display:none" onclick="showPage('G')"><i>👤</i>權限</div>
+  </nav>
+</div>
+
+<script>
+// --- 1. 初始化資料設定 ---
+let sysConfig = {
+  theme: { bg: "#121212", accent: "#bb86fc" },
+  pay: [{name: "信用卡", pct: 0.98}, {name: "全支付", pct: 0.98}, {name: "UBER", pct: 0.65}],
+  catsB: [
+    {name: "食品支出", group: "食材"}, {name: "外帶餐盒", group: "雜支"}, {name: "酒類支出", group: "酒水"},
+    {name: "勞健保", group: "人事"}, {name: "PT", group: "人事"}, {name: "電信", group: "雜支"}
+  ],
+  catsC: [
+    {name: "全支付收入", group: "收入"}, {name: "信用卡收入", group: "收入"}, {name: "UBER收入", group: "收入"}, {name: "其餘收入", group: "收入"},
+    {name: "食品支出", group: "食材"}, {name: "酒類支出", group: "酒水"}, {name: "人事款", group: "人事"}
+  ],
+  catsD: [
+    {name: "菜商", group: "食材"}, {name: "海鮮商", group: "食材"}, {name: "酒商", group: "酒水"}
+  ]
+};
+
+let users = [{user: "siang", pwd: "1234", hint: "最高權限", role: "admin"}];
+let currentUser = null;
+
+const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+window.onload = async function() {
+  renderUserSelect();
+  await loadUsers();
+  await loadConfig();
+  renderUserSelect();
+  updateTheme();
+};
+
+function renderUserSelect() {
+  const sel = document.getElementById('user-select');
+  if(sel) sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
+}
+
+async function authLogin() {
+  const u = document.getElementById('user-select').value;
+  const p = document.getElementById('login-pwd').value;
+  const found = users.find(x => x.user === u && x.pwd === p);
+  
+  if(found) {
+    currentUser = found;
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    
+    if(found.role === 'admin') {
+      document.querySelectorAll('.admin-btn').forEach(b => b.style.display = 'block');
+    } else {
+      // --- 提升安全性：非管理員直接從 DOM 移除敏感頁面 ---
+      document.getElementById('pageF')?.remove(); 
+      document.getElementById('pageG')?.remove();
+      // 同時移除導覽列按鈕，防止透過 CSS 強制顯示
+      document.querySelectorAll('.admin-btn').forEach(b => b.remove());
+    }
+    initSystem();
+  } else { alert("密碼錯誤"); }
+}
+
+function initSystem() {
+  renderA(); 
+  renderDayList('B', sysConfig.catsB); 
+  renderDayList('C', sysConfig.catsC); 
+  renderDayList('D', sysConfig.catsD);
+  renderConfig(); 
+  renderUserList();
+  loadDailyData();
+}
+
+function renderA() {
+  let html = '';
+  for(let d=1; d<=31; d++) {
+    let payHtml = sysConfig.pay.map((p, i) => `
+      <div class="col-4">
+        <label class="form-label">${p.name}</label>
+        <input type="number" id="pay-${i}-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})">
+      </div>`).join('');
+  // 找到這一段並修改：
+html += `<div class="mobile-card">
+      <div class="card-date">2026/1/${d}</div>
+      <div class="row g-2">
+        <div class="col-6"><label class="form-label">現金</label><input type="number" id="cash-${d}" class="form-control-mobile w-100" value="6000" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-6"><label class="form-label">收銀底錢</label><input type="number" id="reg-${d}" class="form-control-mobile w-100" value="6000" onchange="calcAll();syncData('DAILY',${d})"></div>
+        ${payHtml}
+        <div class="col-6"><label class="form-label text-warning">酒水收入</label><input type="number" id="alc-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-6"><label class="form-label text-success">外帶收入</label><input type="number" id="takeout-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-4"><label class="form-label">入銀行</label><input type="number" id="a-bank-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-4"><label class="form-label">入零用</label><input type="number" id="a-petty-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-4"><label class="form-label">提領入櫃</label><input type="number" id="a-draw-${d}" class="form-control-mobile w-100" onchange="calcAll();syncData('DAILY',${d})"></div>
+        <div class="col-12 mt-2 pt-2 border-top d-flex justify-content-between">
+          <span style="color:var(--hint)">營業額: <b id="rev-${d}">0</b></span>
+          <span>正負零: <b id="diff-${d}">0</b></span>
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('listA').innerHTML = html;
+}
+
+function renderDayList(type, cats) {
+  let html = '';
+  for(let d=1; d<=31; d++) {
+    html += `<div class="mobile-card">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="card-date mb-0">1/${d} ${type === 'D' ? '進貨' : (type === 'B' ? '零用' : '銀行')}</div>
+        <button class="btn btn-sm btn-outline-info" onclick="addDynRow('${type}',${d})">+ 新增項目</button>
+      </div>
+      <div id="${type.toLowerCase()}-items-${d}"></div>
+      ${type === 'B' ? `
+        <div class="mt-2 pt-2 border-top">
+          <label class="form-label">提領零用金(扣銀行款):</label>
+          <input type="number" id="b-fromBank-${d}" class="form-control-mobile w-100 mb-2" onchange="calcAll();syncData('DAILY',${d})">
+          <div class="d-flex justify-content-between text-info"><span>支出: <b id="b-total-${d}">0</b></span><span>餘額: <b id="b-rem-${d}">0</b></span></div>
+        </div>` : type === 'C' ? `<div class="mt-2 text-end">銀行餘額: <b id="c-rem-${d}" class="text-accent">0</b></div>` : ''}
+    </div>`;
+  }
+  document.getElementById('list' + type).innerHTML = html;
+}
+
+function addDynRow(type, d, saved = null) {
+  const container = document.getElementById(`${type.toLowerCase()}-items-${d}`);
+  if(!container) return;
+  const cats = type === 'B' ? sysConfig.catsB : (type === 'C' ? sysConfig.catsC : sysConfig.catsD);
+  const div = document.createElement('div');
+  div.className = "dynamic-item-row d-flex gap-1";
+  div.innerHTML = `
+    <select class="form-select form-select-sm" style="width:35%" onchange="calcAll();syncData('DAILY',${d})">
+      ${cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+    </select>
+    <input type="text" placeholder="品名" class="form-control form-control-sm" style="width:30%" onchange="syncData('DAILY',${d})">
+    <input type="number" placeholder="金額" class="form-control form-control-sm dyn-val" style="width:25%" onchange="calcAll();syncData('DAILY',${d})">
+    <button class="btn btn-sm text-danger" onclick="this.parentElement.remove();calcAll();syncData('DAILY',${d})">✕</button>
+  `;
+  if(saved) {
+    div.querySelector('select').value = saved.cat;
+    div.querySelectorAll('input')[0].value = saved.name;
+    div.querySelectorAll('input')[1].value = saved.val;
+  }
+  container.appendChild(div);
+}
+
+function calcAll() {
+  let petty = v('prevPetty');
+  let bank = v('prevBank');
+  let tA_Rev = 0, tA_Alc = 0, tA_Takeout = 0;
+  let tB_Exp = 0, tC_Exp = 0, tD_Exp = 0;
+  
+  let sumB = {食材:0, 雜支:0, 酒水:0, 人事:0}, sumC = {食材:0, 雜支:0, 酒水:0, 人事:0, 收入:0};
+  let sumD = {食材:0, 酒水:0, 雜貨:0};
+
+  for(let d=1; d<=31; d++) {
+    // 1. A 頁營收計算
+    let dPay = 0;
+    sysConfig.pay.forEach((p, i) => dPay += (v(`pay-${i}-${d}`) * p.pct));
+    let dRev = v(`cash-${d}`) + dPay - v(`reg-${d}`);
+    tA_Rev += dRev; 
+    tA_Alc += v(`alc-${d}`); 
+    tA_Takeout += v(`takeout-${d}`);
+    
+    if(document.getElementById(`rev-${d}`)) document.getElementById(`rev-${d}`).innerText = Math.round(dRev).toLocaleString();
+
+    // 2. 正負零公式優化 (現金帳平衡)
+    // 邏輯：(櫃台結餘現金) 扣除 (所有現金搬移紀錄) 應該要等於 0
+    let cashAtHand = v(`cash-${d}`) - v(`reg-${d}`); // 抽屜裡結帳後實際多出的現金
+    let cashMoved = v(`a-bank-${d}`) + v(`a-petty-${d}`) - v(`a-draw-${d}`); // 報帳移動的總額
+    let diff = Math.round(cashAtHand - cashMoved);
+    
+    const diffEl = document.getElementById(`diff-${d}`);
+    if(diffEl) {
+        diffEl.innerText = diff.toLocaleString();
+        // 視覺優化：不等於 0 時顯示紅色警告，等於 0 顯示亮綠色
+        diffEl.style.color = (diff === 0) ? "var(--hint)" : "var(--danger)";
+        diffEl.style.fontWeight = (diff === 0) ? "bold" : "900";
+    }
+
+    // B 頁計算
+    let dExpB = 0;
+    document.querySelectorAll(`#b-items-${d} .dynamic-item-row`).forEach(row => {
+      let val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      let cat = row.querySelector('select').value;
+      let g = sysConfig.catsB.find(c => c.name === cat)?.group;
+      dExpB += val; if(g) sumB[g] += val;
+    });
+    tB_Exp += dExpB;
+    petty = petty - dExpB - v(`a-draw-${d}`) + v(`a-petty-${d}`) + v(`b-fromBank-${d}`);
+    if(document.getElementById(`b-total-${d}`)) document.getElementById(`b-total-${d}`).innerText = dExpB.toLocaleString();
+    if(document.getElementById(`b-rem-${d}`)) document.getElementById(`b-rem-${d}`).innerText = Math.round(petty).toLocaleString();
+
+    // C 頁計算
+    let dInC = v(`a-bank-${d}`), dOutC = v(`b-fromBank-${d}`);
+    document.querySelectorAll(`#c-items-${d} .dynamic-item-row`).forEach(row => {
+      let val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      let cat = row.querySelector('select').value;
+      let g = sysConfig.catsC.find(c => c.name === cat)?.group;
+      if(g === '收入') { dInC += val; sumC.收入 += val; }
+      else { dOutC += val; if(g) sumC[g] += val; tC_Exp += val; }
+    });
+    bank = bank + dInC - dOutC;
+    if(document.getElementById(`c-rem-${d}`)) document.getElementById(`c-rem-${d}`).innerText = Math.round(bank).toLocaleString();
+
+    // D 頁計算
+    document.querySelectorAll(`#d-items-${d} .dynamic-item-row`).forEach(row => {
+      let val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      let cat = row.querySelector('select').value;
+      let g = sysConfig.catsD.find(c => c.name === cat)?.group;
+      if(g) { sumD[g] += val; tD_Exp += val; }
+    });
+  }
+
+  // 更新頁面總支出條
+  document.getElementById('page-total-b').innerText = Math.round(tB_Exp).toLocaleString();
+  document.getElementById('page-total-c').innerText = Math.round(tC_Exp).toLocaleString();
+  document.getElementById('page-total-d').innerText = Math.round(tD_Exp).toLocaleString();
+
+  renderSummaries(sumB, sumC, sumD, tA_Rev, tA_Alc, tA_Takeout);
+}
+
+function renderSummaries(b, c, d, rev, alcRev, takeout) {
+  document.getElementById('total-rev').innerText = Math.round(rev).toLocaleString();
+  document.getElementById('total-alc-rev').innerText = Math.round(alcRev).toLocaleString();
+  document.getElementById('total-takeout').innerText = Math.round(takeout).toLocaleString();
+  
+  const h = (obj) => Object.entries(obj).map(([k, v]) => `<div class="col-6">${k}: <b>${Math.round(v).toLocaleString()}</b></div>`).join('');
+  document.getElementById('summaryB').innerHTML = h(b);
+  document.getElementById('summaryC').innerHTML = h(c);
+  document.getElementById('summaryD').innerHTML = h(d);
+
+  const rent = v('rentInput');
+  const foodRev = rev - alcRev; // 食材營收
+  const costFood = b.食材 + c.食材 + d.食材; // 食材總支出
+  const costAlc = b.酒水 + c.酒水 + d.酒水;   // 酒水總支出
+  const costStaff = b.人事 + c.人事;
+  const costOther = b.雜支 + c.雜支 + d.雜貨;
+  const totalExp = costFood + costAlc + costStaff + costOther + rent;
+
+  const fPct = foodRev > 0 ? (costFood / foodRev * 100).toFixed(1) : 0;
+  const aPct = alcRev > 0 ? (costAlc / alcRev * 100).toFixed(1) : 0;
+
+  document.getElementById('reportArea').innerHTML = `
+    <div class="col-12"><div class="report-card">本月預估獲利<b class="report-val text-info" style="font-size:1.8rem">${Math.round(rev - totalExp).toLocaleString()}</b></div></div>
+    <div class="col-6"><div class="report-card">總營業額<b class="report-val">${Math.round(rev).toLocaleString()}</b></div></div>
+    <div class="col-6"><div class="report-card">總支出<b class="report-val text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
+    <div class="col-6"><div class="report-card">食材營收<b class="report-val">${Math.round(foodRev).toLocaleString()}</b></div></div>
+    <div class="col-6"><div class="report-card">酒水營收<b class="report-val text-warning">${Math.round(alcRev).toLocaleString()}</b></div></div>
+    <div class="col-6"><div class="report-card">食材成本<b class="report-val">${Math.round(costFood).toLocaleString()}</b><span class="report-pct">${fPct}%</span></div></div>
+    <div class="col-6"><div class="report-card">酒水成本<b class="report-val">${Math.round(costAlc).toLocaleString()}</b><span class="report-pct">${aPct}%</span></div></div>
+    <div class="col-12"><div class="report-card">總食材成本 (食材+酒水)<b class="report-val">${Math.round(costFood + costAlc).toLocaleString()}</b></div></div>
+    <div class="col-4"><div class="report-card">人事<b class="report-val">${Math.round(costStaff).toLocaleString()}</b></div></div>
+    <div class="col-4"><div class="report-card">房租<b class="report-val">${rent.toLocaleString()}</b></div></div>
+    <div class="col-4"><div class="report-card">雜支<b class="report-val">${Math.round(costOther).toLocaleString()}</b></div></div>
+  `;
+}
+
+// --- 後台管理功能 (F頁) ---
+function renderConfig() {
+  const build = (id, arr, isPay = false) => {
+    const container = document.getElementById(id);
+    if(!container) return;
+    container.innerHTML = arr.map((item, i) => `
+      <div class="d-flex gap-1 mb-1">
+        <input type="text" class="form-control form-control-sm" value="${item.name}" onchange="updateConfigVal('${id}', ${i}, 'name', this.value)">
+        ${isPay ? `<input type="number" step="0.01" class="form-control form-control-sm" value="${item.pct}" style="width:60px" onchange="updateConfigVal('${id}', ${i}, 'pct', this.value)">` : `
+          <select class="form-select form-select-sm" style="width:80px" onchange="updateConfigVal('${id}', ${i}, 'group', this.value)">
+            ${['食材','雜支','酒水','人事','收入','雜貨'].map(g => `<option value="${g}" ${item.group===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        `}
+        <button class="btn btn-sm btn-danger" onclick="removeConfigItem('${id}', ${i})">✕</button>
+      </div>`).join('');
+  };
+  build('config-pay', sysConfig.pay, true);
+  build('config-catsB', sysConfig.catsB);
+  build('config-catsC', sysConfig.catsC);
+  build('config-catsD', sysConfig.catsD);
+  document.getElementById('cfg-bg-color').value = sysConfig.theme.bg;
+  document.getElementById('cfg-accent-color').value = sysConfig.theme.accent;
+}
+
+function updateConfigVal(id, i, key, val) {
+  const keyMap = { 'config-pay': 'pay', 'config-catsB': 'catsB', 'config-catsC': 'catsC', 'config-catsD': 'catsD' };
+  sysConfig[keyMap[id]][i][key] = key === 'pct' ? parseFloat(val) : val;
+}
+
+function addConfigItem(key) {
+  if(key === 'pay') sysConfig.pay.push({name: "新支付", pct: 1.0});
+  else sysConfig[key].push({name: "新項目", group: "食材"});
+  renderConfig();
+}
+
+function removeConfigItem(id, i) {
+  const keyMap = { 'config-pay': 'pay', 'config-catsB': 'catsB', 'config-catsC': 'catsC', 'config-catsD': 'catsD' };
+  sysConfig[keyMap[id]].splice(i, 1);
+  renderConfig();
+}
+
+async function saveConfig() {
+  if(!confirm("確定儲存後台設定？")) return;
+  sysConfig.theme.bg = document.getElementById('cfg-bg-color').value;
+  sysConfig.theme.accent = document.getElementById('cfg-accent-color').value;
+  await db.from('daily_data').upsert({ date_key: "CONFIG", memo_text: JSON.stringify(sysConfig) });
+  location.reload(); 
+}
+
+// --- 權限管理功能 (G頁) ---
+function renderUserList() {
+  const container = document.getElementById('user-list-area');
+  if(!container) return;
+  container.innerHTML = users.map((u, i) => `
+    <div class="mobile-card d-flex justify-content-between align-items-center">
+      <div><b>${u.user}</b> (${u.role})<br><small class="text-muted">${u.hint}</small></div>
+      ${u.user === 'siang' ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="removeUser(${i})">刪除</button>`}
+    </div>`).join('');
+}
+
+async function addUser() {
+  const user = document.getElementById('new-username').value;
+  const pwd = document.getElementById('new-password').value;
+  const hint = document.getElementById('new-hint').value;
+  if(!user || !pwd) return alert("請填寫完整");
+  users.push({ user, pwd, hint, role: "staff" });
+  await saveUsers();
+  renderUserList();
+}
+
+async function removeUser(i) {
+  if(!confirm("刪除該使用者？")) return;
+  users.splice(i, 1);
+  await saveUsers();
+  renderUserList();
+}
+
+async function saveUsers() { await db.from('daily_data').upsert({ date_key: "USERS", memo_text: JSON.stringify(users) }); }
+
+// --- 雲端資料同步 ---
+async function syncData(type, d) {
+  const key = type === 'SYSTEM' ? "SYSTEM" : `2026-01-${d.toString().padStart(2, '0')}`;
+  const data = { date_key: key };
+  if(key === 'SYSTEM') {
+    data.cash = v('prevPetty'); data.bank_in = v('prevBank'); data.reg = v('rentInput');
+  } else {
+    data.cash = v(`cash-${d}`); data.reg_val = v(`reg-${d}`); data.bank_in = v(`a-bank-${d}`);
+    data.petty_in = v(`a-petty-${d}`); data.draw_out = v(`a-draw-${d}`); data.alc_val = v(`alc-${d}`);
+    data.takeout_val = v(`takeout-${d}`); data.from_bank = v(`b-fromBank-${d}`);
+    data.pay_vals = sysConfig.pay.map((_, i) => v(`pay-${i}-${d}`));
+    const getDyn = (t) => Array.from(document.querySelectorAll(`#${t}-items-${d} .dynamic-item-row`)).map(row => ({
+      cat: row.querySelector('select').value, name: row.querySelectorAll('input')[0].value, val: parseFloat(row.querySelectorAll('input')[1].value) || 0
+    }));
+    data.dyn_items_b = getDyn('b'); data.dyn_items_c = getDyn('c'); data.dyn_items_d = getDyn('d');
+  }
+  await db.from('daily_data').upsert(data);
+}
+
+async function loadDailyData() {
+  const { data } = await db.from('daily_data').select('*');
+  if(!data) return;
+  data.forEach(item => {
+    if(item.date_key === "SYSTEM") {
+      document.getElementById('prevPetty').value = item.cash;
+      document.getElementById('prevBank').value = item.bank_in;
+      document.getElementById('rentInput').value = item.reg || 0;
+    } else if(item.date_key.startsWith("2026")) {
+      const d = parseInt(item.date_key.split('-')[2]);
+      if(!document.getElementById(`cash-${d}`)) return;
+      document.getElementById(`cash-${d}`).value = (item.cash && item.cash > 0) ? item.cash : 6000;
+      document.getElementById(`reg-${d}`).value = (item.reg_val && item.reg_val > 0) ? item.reg_val : 6000;
+      document.getElementById(`a-bank-${d}`).value = item.bank_in;
+      document.getElementById(`a-petty-${d}`).value = item.petty_in;
+      document.getElementById(`a-draw-${d}`).value = item.draw_out;
+      document.getElementById(`alc-${d}`).value = item.alc_val;
+      document.getElementById(`takeout-${d}`).value = item.takeout_val;
+      document.getElementById(`b-fromBank-${d}`).value = item.from_bank || 0;
+      item.pay_vals?.forEach((val, i) => { if(document.getElementById(`pay-${i}-${d}`)) document.getElementById(`pay-${i}-${d}`).value = val; });
+      item.dyn_items_b?.forEach(obj => addDynRow('B', d, obj));
+      item.dyn_items_c?.forEach(obj => addDynRow('C', d, obj));
+      item.dyn_items_d?.forEach(obj => addDynRow('D', d, obj));
+    }
+  });
+  calcAll();
+}
+
+async function loadConfig() {
+  try {
+    const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle();
+    if(data) sysConfig = JSON.parse(data.memo_text);
+  } catch(e) {}
+}
+
+async function loadUsers() {
+  try {
+    const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
+    if(data) users = JSON.parse(data.memo_text);
+  } catch(e) {}
+}
+
+// --- 介面控制 ---
+function showPage(pId) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page' + pId).classList.add('active');
+  const items = Array.from(document.querySelectorAll('.nav-item'));
+  const target = items.find(x => x.innerText.includes(pId === 'A'?'營':pId === 'B'?'零':pId === 'C'?'銀':pId === 'D'?'進':pId === 'E'?'報':pId === 'F'?'後':'權'));
+  if(target) target.classList.add('active');
+}
+
+function updateTheme() {
+  document.documentElement.style.setProperty('--bg', sysConfig.theme.bg);
+  document.documentElement.style.setProperty('--accent', sysConfig.theme.accent);
+}
+
+const v = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+</script>
+</body>
+</html>
