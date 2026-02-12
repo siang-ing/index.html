@@ -3,361 +3,387 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>2026 店務雲端系統 旗艦版</title>
+  <title>2026 店務系統 - 終極版</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* 這裡包含了所有的視覺設定 (CSS) */
-    :root { --accent: #bb86fc; --bg: #121212; --card: rgba(255,255,255,0.05); --text: #ffffff; --hint: #03dac6; --danger: #ff5252; --input-bg: rgba(255,255,255,0.1); }
-    body { background-color: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding-bottom: 100px; transition: background 0.3s, color 0.3s; }
-    #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-    .mobile-card { background: var(--card); border-radius: 15px; padding: 18px; margin: 10px 15px 20px 15px; border-left: 5px solid var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.3); backdrop-filter: blur(10px); }
-    .card-date { font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 0px; padding: 5px 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-    .form-label { font-size: 0.85rem; color: var(--text); opacity: 1; margin-bottom: 4px; font-weight: bold; }
-    .form-control-mobile { height: 48px !important; background-color: var(--input-bg) !important; border: 1px solid rgba(255,255,255,0.2) !important; color: var(--text) !important; font-size: 1rem !important; border-radius: 8px; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 80px; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-    .nav-item { text-align: center; color: #888; text-decoration: none; font-size: 0.65rem; flex: 1; cursor: pointer; transition: 0.2s; }
-    .nav-item.active { color: var(--accent); transform: scale(1.1); }
-    .nav-item i { display: block; font-size: 1.4rem; margin-bottom: 2px; font-style: normal; }
-    .page-content { display: none; padding: 10px 0; }
+    /* 這裡包含了 F 頁要求的顏色變換邏輯 */
+    :root { 
+      --bg-color: #121212; --text-color: #ffffff; --accent-color: #bb86fc;
+      --card-bg: rgba(255,255,255,0.08); --input-bg: rgba(255,255,255,0.12);
+    }
+    body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding-bottom: 90px; }
+    .light-theme { --bg-color: #f8f9fa; --text-color: #212529; --accent-color: #6200ee; --card-bg: #ffffff; --input-bg: #ffffff; }
+    
+    #login-overlay { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .form-control-mobile { background: var(--input-bg) !important; border: 1px solid #444 !important; color: var(--text-color) !important; border-radius: 6px; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-color); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
+    .nav-item { text-align: center; color: #888; text-decoration: none; font-size: 0.7rem; flex: 1; cursor: pointer; }
+    .nav-item.active { color: var(--accent-color); font-weight: bold; }
+    .nav-item i { display: block; font-size: 1.2rem; font-style: normal; margin-bottom: 2px; }
+    .page-content { display: none; padding-top: 10px; }
     .page-content.active { display: block; }
-    .balance-header { background: var(--card); padding: 15px; margin: 10px 15px; border-radius: 10px; border-left: 5px solid var(--hint); font-weight: bold; color: var(--text) !important; }
-    .page-total-bar { background: rgba(187, 134, 252, 0.15); padding: 12px; margin: 0 15px 10px 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; font-weight: bold; color: var(--text); }
-    .dynamic-item-row { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.1); }
-    .total-summary { background: var(--card); border-radius: 10px; padding: 15px; margin: 10px 15px 20px 15px; border: 1px solid var(--accent); color: var(--text); }
-    .report-card { background: var(--card); padding: 12px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--accent); height: 100%; color: var(--text); transition: 0.3s; }
-    .boss-mode-blur .report-val { filter: blur(10px); user-select: none; }
-    .sync-status { position: fixed; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-size: 12px; z-index: 10001; display: none; }
+    .sync-status { position: fixed; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-size: 12px; z-index: 10001; }
+    .boss-mode-blur .report-val { filter: blur(10px); }
   </style>
 </head>
-<body data-theme="dark">
+<body>
 
-<div id="sync-indicator" class="sync-status"></div>
+<div id="sync-indicator" class="sync-status text-white" style="display:none; background: #03dac6;"></div>
 
 <div id="login-overlay">
-  <div class="container p-4" style="max-width: 400px;">
-    <h3 class="text-center mb-4" style="color: var(--accent); letter-spacing: 3px;">2026 店務系統</h3>
-    <div class="mb-3">
-      <label class="form-label text-white">使用者</label>
-      <select id="user-select" class="form-select form-control-mobile"></select>
-    </div>
-    <div class="mb-4">
-      <label class="form-label text-white">密碼</label>
-      <input type="password" id="login-pwd" class="form-control form-control-mobile" inputmode="numeric">
-    </div>
-    <button class="btn btn-primary w-100 py-3" onclick="authLogin()" style="font-weight: bold; background: var(--accent); border:none;">進入系統</button>
+  <div class="p-4 w-100" style="max-width: 350px;">
+    <h3 class="text-center mb-4" style="color: var(--accent-color);">系統登入</h3>
+    <select id="user-select" class="form-select form-control-mobile mb-3"></select>
+    <input type="password" id="login-pwd" class="form-control-mobile form-control mb-4" placeholder="請輸入密碼">
+    <button class="btn btn-primary w-100 py-2" onclick="authLogin()" style="background:var(--accent-color); border:none;">確認登入</button>
   </div>
 </div>
 
-<div id="app" style="display: none;">
+<div id="app" style="display:none;">
   <div id="pageA" class="page-content active">
-    <h4 class="text-center mb-3">A. 營收明細表</h4>
-    <div class="total-summary row g-0 text-center">
-      <div class="col-4 border-end">總營業額<br><b id="total-rev" class="text-info">0</b></div>
-      <div class="col-4 border-end">酒水營收<br><b id="total-alc-rev" class="text-warning">0</b></div>
-      <div class="col-4">總外帶<br><b id="total-takeout" class="text-success">0</b></div>
-    </div>
+    <h5 class="text-center mb-3">A. 每日營收</h5>
     <div id="listA"></div>
   </div>
 
   <div id="pageB" class="page-content">
-    <div class="balance-header">上月零用餘額: <input type="number" id="prevPetty" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
-    <div class="page-total-bar">B 頁當月總支出: <span id="page-total-b" class="text-danger">0</span></div>
+    <h5 class="text-center mb-3">B. 零用金支出</h5>
+    <div class="mobile-card">上月零用餘額: <input type="number" id="prevPetty" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
     <div id="listB"></div>
-    <div class="total-summary"><h6 class="mb-2">B. 零用金月支出統計</h6><div id="summaryB" class="row g-2" style="font-size:0.85rem;"></div></div>
   </div>
 
   <div id="pageC" class="page-content">
-    <div class="balance-header">上月銀行餘額: <input type="number" id="prevBank" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
-    <div class="page-total-bar">C 頁當月總支出: <span id="page-total-c" class="text-danger">0</span></div>
+    <h5 class="text-center mb-3">C. 銀行收支</h5>
+    <div class="mobile-card">上月銀行餘額: <input type="number" id="prevBank" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
     <div id="listC"></div>
-    <div class="total-summary"><h6 class="mb-2">C. 銀行月收支統計</h6><div id="summaryC" class="row g-2" style="font-size:0.85rem;"></div></div>
   </div>
 
   <div id="pageD" class="page-content">
-    <h4 class="text-center mb-3">D. 月結廠商進貨</h4>
-    <div class="page-total-bar">D 頁當月進貨總額: <span id="page-total-d" class="text-danger">0</span></div>
+    <h5 class="text-center mb-3">D. 廠商月結進貨</h5>
     <div id="listD"></div>
-    <div class="total-summary"><h6 class="mb-2">D. 進貨總額統計</h6><div id="summaryD" class="row g-2" style="font-size:0.85rem;"></div></div>
   </div>
 
   <div id="pageE" class="page-content">
-    <h4 class="text-center mb-3">E. 當月損益報表 <button class="btn btn-sm btn-outline-secondary" onclick="toggleBossMode()">👁️</button></h4>
-    <div class="balance-header">房租支出設定: <input type="number" id="rentInput" class="form-control-mobile d-inline-block ms-2" style="width:120px; height:35px !important" value="0" onchange="calcAll(); syncData('SYSTEM', 0)"></div>
-    <div id="reportArea" class="row g-3 px-3"></div>
+    <h5 class="text-center mb-3">E. 月度損益報表 <button class="btn btn-sm btn-outline-secondary" onclick="toggleBossMode()">👁️</button></h5>
+    <div class="mobile-card">房租支出: <input type="number" id="rentInput" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
+    <div id="reportArea"></div>
   </div>
 
   <div id="pageF" class="page-content">
-    <h4 class="text-center mb-3 text-danger">F. 系統管理中心</h4>
+    <h5 class="text-center mb-3 text-danger">F. 系統管理後台</h5>
     <div class="px-3">
         <div class="mobile-card">
-            <h6>設定提示</h6>
-            <p style="font-size:0.8rem; opacity:0.8;">請在此調整支付比例或新增類別，完成後點擊最下方儲存。</p>
+            <h6>1. 主題設定</h6>
+            <button class="btn btn-sm btn-dark w-100 mb-2" onclick="setTheme('dark')">深色模式</button>
+            <button class="btn btn-sm btn-light w-100 mb-2" onclick="setTheme('light')">淺色模式</button>
+            <label class="form-label mt-2">模組顏色 (Accent)</label>
+            <input type="color" id="accentColorPicker" class="form-control mb-3" onchange="setAccent(this.value)">
         </div>
-        <div id="config-area">
-          <div class="mobile-card"><h6>1. 支付方式設定</h6><div id="config-pay"></div><button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('pay')">+ 新增</button></div>
-          <div class="mobile-card"><h6>2. 零用金類別</h6><div id="config-catsB"></div><button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsB')">+ 新增</button></div>
-          <div class="mobile-card"><h6>3. 銀行收支類別</h6><div id="config-catsC"></div><button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsC')">+ 新增</button></div>
-          <div class="mobile-card"><h6>4. 進貨廠商</h6><div id="config-catsD"></div><button class="btn btn-sm btn-outline-info w-100 mt-2" onclick="addConfigItem('catsD')">+ 新增</button></div>
+        <div class="mobile-card">
+            <h6>2. A頁支付方式與%數</h6>
+            <div id="config-pay-list"></div>
+            <button class="btn btn-sm btn-info w-100" onclick="addPayConfig()">+ 新增支付</button>
         </div>
-        <button class="btn btn-warning w-100 mb-5" onclick="saveConfig()">儲存設定並更新</button>
+        <button class="btn btn-danger w-100 mt-4 py-2" onclick="saveFullConfig()">儲存所有後台設定</button>
     </div>
   </div>
 
   <div id="pageG" class="page-content">
-    <h4 class="text-center mb-3 text-danger">G. 權限管理</h4>
-    <div class="px-3" id="user-list-area"></div>
+    <h5 class="text-center mb-3 text-danger">G. 使用者權限管理</h5>
+    <div class="px-3">
+        <div id="user-manage-list"></div>
+        <div class="mobile-card mt-3">
+            <h6>新增使用者</h6>
+            <input type="text" id="new-u-name" class="form-control-mobile w-100 mb-2" placeholder="帳號">
+            <input type="password" id="new-u-pwd" class="form-control-mobile w-100 mb-2" placeholder="密碼">
+            <input type="text" id="new-u-safe" class="form-control-mobile w-100 mb-2" placeholder="安全問題">
+            <button class="btn btn-success w-100" onclick="addUser()">確認新增 (需最高權限)</button>
+        </div>
+    </div>
   </div>
 
   <nav class="bottom-nav">
     <div class="nav-item active" onclick="showPage('A')"><i>📊</i>營收</div>
-    <div class="nav-item" onclick="showPage('B')"><i>💸</i>零用</div>
+    <div class="nav-item" onclick="showPage('B')"><i>💸</i>支出</div>
     <div class="nav-item" onclick="showPage('C')"><i>🏦</i>銀行</div>
     <div class="nav-item" onclick="showPage('D')"><i>🚚</i>進貨</div>
     <div class="nav-item" onclick="showPage('E')"><i>📈</i>報表</div>
-    <div class="nav-item text-danger admin-btn" style="display:none" onclick="showPage('F')"><i>⚙️</i>後台</div>
-    <div class="nav-item text-danger admin-btn" style="display:none" onclick="showPage('G')"><i>👤</i>權限</div>
+    <div class="nav-item admin-btn" style="display:none" onclick="showPage('F')"><i>⚙️</i>後台</div>
+    <div class="nav-item admin-btn" style="display:none" onclick="showPage('G')"><i>👤</i>權限</div>
   </nav>
 </div>
 
 <script>
-// --- 核心資料設定 ---
+// --- 核心變數 ---
 let sysConfig = {
-  theme: { bg: "#121212", accent: "#bb86fc" },
-  pay: [{name: "信用卡", pct: 0.98}, {name: "全支付", pct: 0.98}, {name: "UBER", pct: 0.65}],
-  catsB: [{name: "食品支出", group: "食材"}, {name: "外帶餐盒", group: "雜支"}, {name: "酒類支出", group: "酒水"}],
-  catsC: [{name: "全支付收入", group: "收入"}, {name: "信用卡收入", group: "收入"}, {name: "UBER收入", group: "收入"}, {name: "其餘收入", group: "收入"}, {name: "食品支出", group: "食材"}, {name: "酒類支出", group: "酒水"}],
-  catsD: [{name: "菜商", group: "食材"}, {name: "酒商", group: "酒水"}]
+  theme: 'dark', accent: '#bb86fc',
+  pay: [{name:'信用卡', pct:0.98}, {name:'全支付', pct:0.98}, {name:'UBER', pct:0.65}],
+  catsD: [{name:'菜商', type:'food'}, {name:'酒商', type:'alc'}]
 };
-let users = [{user: "siang", pwd: "1234", role: "admin"}];
+let users = [{user:'siang', pwd:'1234', role:'admin', safe:'老闆'}];
 const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
-// --- 初始化啟動 ---
-window.onload = async function() {
-  await loadUsers(); await loadConfig(); renderUserSelect();
+// --- 初始化 ---
+window.onload = async () => {
+  await loadUsers(); await loadConfig(); renderUserSelect(); renderUserList();
 };
 
 function renderUserSelect() {
-  const sel = document.getElementById('user-select');
-  sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
+  document.getElementById('user-select').innerHTML = users.map(u=>`<option value="${u.user}">${u.user}</option>`).join('');
 }
 
 async function authLogin() {
-  const u = document.getElementById('user-select').value;
-  const p = document.getElementById('login-pwd').value;
-  const found = users.find(x => x.user === u && x.pwd === p);
+  const u = document.getElementById('user-select').value, p = document.getElementById('login-pwd').value;
+  const found = users.find(x=>x.user===u && x.pwd===p);
   if(found) {
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    if(found.role === 'admin') document.querySelectorAll('.admin-btn').forEach(b => b.style.display = 'block');
-    initSystem();
-  } else { alert("密碼錯誤"); }
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('app').style.display='block';
+    if(found.user==='siang') document.querySelectorAll('.admin-btn').forEach(b=>b.style.display='block');
+    initApp();
+  } else { alert("密碼錯誤！"); }
 }
 
-function initSystem() {
-  renderA(); renderDayList('B', sysConfig.catsB); renderDayList('C', sysConfig.catsC); renderDayList('D', sysConfig.catsD);
-  loadDailyData(); renderConfig();
+function initApp() {
+  renderA(); renderB(); renderC(); renderD(); loadDailyData();
+  setTheme(sysConfig.theme); setAccent(sysConfig.accent);
 }
 
-// --- 功能優化：自動收摺 A 頁 ---
+// --- 頁面生成 (固定欄位) ---
 function renderA() {
-  let html = '';
-  const today = new Date().getDate();
+  let h = '';
   for(let d=1; d<=31; d++) {
-    const isToday = (d === today);
-    html += `
-    <div class="mobile-card">
-      <div class="card-date" onclick="toggleDate(${d})">
-        <span>2026/1/${d} ${isToday ? '<small class="badge bg-primary ms-2">今日</small>' : ''}</span>
-        <span id="arrow-${d}">${isToday ? '▲' : '▼'}</span>
-      </div>
-      <div id="content-${d}" style="display: ${isToday ? 'block' : 'none'}; border-top: 1px solid rgba(255,255,255,0.1); margin-top:10px; padding-top:10px;">
+    h += `<div class="mobile-card">
+      <div class="card-date" onclick="toggle('A',${d})"><span>1/${d} 營收</span><span>▼</span></div>
+      <div id="c-A-${d}" style="display:none">
         <div class="row g-2">
-          <div class="col-6"><label class="form-label">現金</label><input type="number" id="cash-${d}" class="form-control-mobile w-100" value="6000" onchange="calcAndSync(${d})"></div>
-          <div class="col-6"><label class="form-label">收銀底錢</label><input type="number" id="reg-${d}" class="form-control-mobile w-100" value="6000" onchange="calcAndSync(${d})"></div>
-          ${sysConfig.pay.map((p, i) => `<div class="col-4"><label class="form-label">${p.name}</label><input type="number" id="pay-${i}-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>`).join('')}
-          <div class="col-6"><label class="form-label text-warning">酒水收入</label><input type="number" id="alc-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>
-          <div class="col-6"><label class="form-label text-success">外帶收入</label><input type="number" id="takeout-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>
-          <div class="col-4"><label class="form-label">入銀行</label><input type="number" id="a-bank-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>
-          <div class="col-4"><label class="form-label">入零用</label><input type="number" id="a-petty-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>
-          <div class="col-4"><label class="form-label">提領入櫃</label><input type="number" id="a-draw-${d}" class="form-control-mobile w-100" onchange="calcAndSync(${d})"></div>
-          <div class="col-12 mt-2 pt-2 border-top d-flex justify-content-between">
-            <span style="color:var(--hint)">營業額: <b id="rev-${d}">0</b></span>
-            <span>正負零: <b id="diff-${d}">0</b></span>
-          </div>
+          <div class="col-6"><label class="form-label">現金</label><input type="number" id="cash-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
+          <div class="col-6"><label class="form-label">底錢</label><input type="number" id="reg-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
+          ${sysConfig.pay.map((p,i)=>`<div class="col-4"><label class="form-label">${p.name}</label><input type="number" id="pay-${i}-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+          <div class="col-6"><label class="form-label">酒水營收</label><input type="number" id="alc-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+          <div class="col-6"><label class="form-label">入銀行</label><input type="number" id="abank-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+          <div class="col-6"><label class="form-label">入零用</label><input type="number" id="apetty-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
         </div>
       </div>
     </div>`;
   }
-  document.getElementById('listA').innerHTML = html;
+  document.getElementById('listA').innerHTML = h;
 }
 
-function toggleDate(d) {
-  const c = document.getElementById(`content-${d}`);
-  const a = document.getElementById(`arrow-${d}`);
-  const isHidden = c.style.display === 'none';
-  c.style.display = isHidden ? 'block' : 'none';
-  a.innerText = isHidden ? '▲' : '▼';
-}
-
-function renderDayList(type, cats) {
-  let html = '';
+function renderB() {
+  const cats = ["食品支出", "酒類支出", "外帶餐盒", "其餘雜支", "勞健保", "PT", "電信", "電費", "水費", "瓦斯"];
+  let h = '';
   for(let d=1; d<=31; d++) {
-    html += `<div class="mobile-card">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="card-date mb-0">1/${d} ${type==='B'?'零用':(type==='C'?'銀行':'進貨')}</div>
-        <button class="btn btn-sm btn-outline-info" onclick="addDynRow('${type}',${d})">+ 新增</button>
+    h += `<div class="mobile-card">
+      <div class="card-date" onclick="toggle('B',${d})"><span>1/${d} 零用支出</span><span>▼</span></div>
+      <div id="c-B-${d}" style="display:none">
+        <div class="row g-2">
+          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="b-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+        </div>
       </div>
-      <div id="${type.toLowerCase()}-items-${d}"></div>
-      ${type==='B' ? `<div class="mt-2 pt-2 border-top"><label class="form-label">提領零用(扣銀行款):</label><input type="number" id="b-fromBank-${d}" class="form-control-mobile w-100 mb-2" onchange="calcAndSync(${d})"></div>` : ''}
     </div>`;
   }
-  document.getElementById('list'+type).innerHTML = html;
+  document.getElementById('listB').innerHTML = h;
 }
 
-function addDynRow(type, d, saved = null) {
-  const container = document.getElementById(`${type.toLowerCase()}-items-${d}`);
-  const cats = type==='B'?sysConfig.catsB : (type==='C'?sysConfig.catsC : sysConfig.catsD);
-  const div = document.createElement('div');
-  div.className = "dynamic-item-row d-flex gap-1";
-  div.innerHTML = `<select class="form-select form-select-sm" style="width:35%" onchange="calcAndSync(${d})">${cats.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')}</select>
-    <input type="text" placeholder="品名" class="form-control form-control-sm" style="width:30%" onchange="calcAndSync(${d})">
-    <input type="number" placeholder="金額" class="form-control form-control-sm" style="width:25%" onchange="calcAndSync(${d})">
-    <button class="btn btn-sm text-danger" onclick="this.parentElement.remove();calcAndSync(${d})">✕</button>`;
-  if(saved) { div.querySelector('select').value = saved.cat; div.querySelectorAll('input')[0].value = saved.name; div.querySelectorAll('input')[1].value = saved.val; }
-  container.appendChild(div);
+function renderC() {
+  const cats = ["全支付收入", "信用卡收入", "UBER收入", "其餘收入", "食品支出", "酒類支出", "雜支款", "人事款"];
+  let h = '';
+  for(let d=1; d<=31; d++) {
+    h += `<div class="mobile-card">
+      <div class="card-date" onclick="toggle('C',${d})"><span>1/${d} 銀行收支</span><span>▼</span></div>
+      <div id="c-C-${d}" style="display:none">
+        <div class="row g-2">
+          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="c-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('listC').innerHTML = h;
 }
 
-// --- 計算與同步 ---
-function calcAndSync(d) { calcAll(); syncData('DAILY', d); }
+function renderD() {
+  const cats = ["菜商", "海鮮商", "肉商", "酒商", "雜貨商"];
+  let h = '';
+  for(let d=1; d<=31; d++) {
+    h += `<div class="mobile-card">
+      <div class="card-date" onclick="toggle('D',${d})"><span>1/${d} 廠商月結</span><span>▼</span></div>
+      <div id="c-D-${d}" style="display:none">
+        <div class="row g-2">
+          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="d-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('listD').innerHTML = h;
+}
 
+// --- 報表邏輯 (精密計算) ---
 function calcAll() {
-  let pty = v('prevPetty'), bnk = v('prevBank');
-  let tA_Rev = 0, tA_Alc = 0, tA_Tko = 0;
-  let tB_Exp = 0, tC_Exp = 0, tD_Exp = 0;
-  let sB = {食材:0,雜支:0,酒水:0,人事:0}, sC = {食材:0,雜支:0,酒水:0,人事:0,收入:0}, sD = {食材:0,酒水:0};
+  let tRev = 0, tAlcRev = 0, tFoodRev = 0;
+  let tB_Food = 0, tB_Alc = 0, tB_Misc = 0, tB_HR = 0, tB_Total = 0;
+  let tC_Food = 0, tC_Alc = 0, tC_Misc = 0, tC_HR = 0, tC_Total = 0;
+  let tD_Food = 0, tD_Alc = 0, tD_Misc = 0, tD_Total = 0;
 
   for(let d=1; d<=31; d++) {
-    let dPay = 0; sysConfig.pay.forEach((p, i) => dPay += (v(`pay-${i}-${d}`) * p.pct));
-    let dRev = v(`cash-${d}`) + dPay - v(`reg-${d}`);
-    tA_Rev += dRev; tA_Alc += v(`alc-${d}`); tA_Tko += v(`takeout-${d}`);
-    if(document.getElementById(`rev-${d}`)) document.getElementById(`rev-${d}`).innerText = Math.round(dRev).toLocaleString();
+    // A 頁計算
+    let dPay = 0; sysConfig.pay.forEach((p,i)=> dPay += (val(`pay-${i}-${d}`) * p.pct));
+    tRev += (val(`cash-${d}`) + dPay - val(`reg-${d}`));
+    tAlcRev += val(`alc-${d}`);
     
-    // 功能優化：正負零動態顏色
-    let diff = Math.round((v(`cash-${d}`) - v(`reg-${d}`)) - (v(`a-bank-${d}`) + v(`a-petty-${d}`) - v(`a-draw-${d}`)));
-    const de = document.getElementById(`diff-${d}`);
-    if(de) { de.innerText = diff; de.style.color = (diff===0) ? "var(--hint)" : "var(--danger)"; de.style.fontWeight = (diff===0) ? "bold" : "900"; }
-
-    let dB = 0; document.querySelectorAll(`#b-items-${d} .dynamic-item-row`).forEach(r => {
-      let val = parseFloat(r.querySelectorAll('input')[1].value)||0; dB += val;
-      let g = sysConfig.catsB.find(c=>c.name===r.querySelector('select').value)?.group; if(g) sB[g]+=val;
-    });
-    tB_Exp += dB; pty = pty - dB - v(`a-draw-${d}`) + v(`a-petty-${d}`) + v(`b-fromBank-${d}`);
-
-    let dC_In = v(`a-bank-${d}`), dC_Out = v(`b-fromBank-${d}`);
-    document.querySelectorAll(`#c-items-${d} .dynamic-item-row`).forEach(r => {
-      let val = parseFloat(r.querySelectorAll('input')[1].value)||0;
-      let g = sysConfig.catsC.find(c=>c.name===r.querySelector('select').value)?.group;
-      if(g==='收入') { dC_In += val; sC.收入 += val; } else { dC_Out += val; if(g) sC[g]+=val; tC_Exp += val; }
-    });
-    bnk = bnk + dC_In - dC_Out;
-
-    document.querySelectorAll(`#d-items-${d} .dynamic-item-row`).forEach(r => {
-      let val = parseFloat(r.querySelectorAll('input')[1].value)||0;
-      let g = sysConfig.catsD.find(c=>c.name===r.querySelector('select').value)?.group; if(g) { sD[g]+=val; tD_Exp += val; }
-    });
+    // B 頁累加
+    tB_Food += val(`b-v-${d}-0`); tB_Alc += val(`b-v-${d}-1`);
+    [2,3,4,6,7,8,9].forEach(i=> tB_Misc += val(`b-v-${d}-${i}`));
+    tB_HR += val(`b-v-${d}-5`);
+    
+    // C 頁累加 (支出項從 index 4 開始)
+    tC_Food += val(`c-v-${d}-4`); tC_Alc += val(`c-v-${d}-5`);
+    tC_Misc += val(`c-v-${d}-6`); tC_HR += val(`c-v-${d}-7`);
+    
+    // D 頁累加
+    tD_Food += (val(`d-v-${d}-0`) + val(`d-v-${d}-1`) + val(`d-v-${d}-2`));
+    tD_Alc += val(`d-v-${d}-3`); tD_Misc += val(`d-v-${d}-4`);
   }
-  document.getElementById('page-total-b').innerText = Math.round(tB_Exp).toLocaleString();
-  document.getElementById('page-total-c').innerText = Math.round(tC_Exp).toLocaleString();
-  document.getElementById('page-total-d').innerText = Math.round(tD_Exp).toLocaleString();
-  renderE(sB, sC, sD, tA_Rev, tA_Alc, tA_Tko);
-  document.getElementById('total-rev').innerText = Math.round(tA_Rev).toLocaleString();
-  document.getElementById('total-alc-rev').innerText = Math.round(tA_Alc).toLocaleString();
-  document.getElementById('total-takeout').innerText = Math.round(tA_Tko).toLocaleString();
-  const h = (obj) => Object.entries(obj).map(([k, v]) => `<div class="col-6">${k}: <b>${Math.round(v).toLocaleString()}</b></div>`).join('');
-  document.getElementById('summaryB').innerHTML = h(sB);
-  document.getElementById('summaryC').innerHTML = h(sC);
-  document.getElementById('summaryD').innerHTML = h(sD);
-}
 
-function renderE(sB, sC, sD, rev, alc, tko) {
-  const rent = v('rentInput');
-  const foodRev = rev - alc;
-  const costF = sB.食材 + sC.食材 + sD.食材, costA = sB.酒水 + sC.酒水 + sD.酒水;
-  const totalExp = costF + costA + sB.人事 + sC.人事 + sB.雜支 + sC.雜支 + rent;
+  tFoodRev = tRev - tAlcRev;
+  const costF = tB_Food + tC_Food + tD_Food;
+  const costA = tB_Alc + tC_Alc + tD_Alc;
+  const costM = tB_Misc + tC_Misc + tD_Misc;
+  const costHR = tB_HR + tC_HR;
+  const totalCostFood = costF + costA;
+  const totalExp = tB_Total + tC_Total + (tD_Food + tD_Alc + tD_Misc) + val('rentInput') + costM + costHR;
+  const profit = tRev - totalExp;
+
+  const pct = (a, b) => b === 0 ? 0 : ((a/b)*100).toFixed(1);
+
   document.getElementById('reportArea').innerHTML = `
-    <div class="col-12"><div class="report-card">本月預估獲利<b class="report-val text-info d-block" style="font-size:1.8rem">${Math.round(rev-totalExp).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">總營業額<b class="report-val d-block">${Math.round(rev).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">總支出<b class="report-val d-block text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">食材營收<b class="report-val d-block">${Math.round(foodRev).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">酒水營收<b class="report-val d-block text-warning">${Math.round(alc).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">食材成本<b class="report-val d-block">${Math.round(costF).toLocaleString()}</b></div></div>
-    <div class="col-6"><div class="report-card">酒水成本<b class="report-val d-block">${Math.round(costA).toLocaleString()}</b></div></div>`;
+    <div class="row g-3 boss-mode-blur">
+      <div class="col-12"><div class="mobile-card text-center"><h6>本月獲利</h6><h2 class="report-val text-info">${Math.round(profit).toLocaleString()}</h2></div></div>
+      <div class="col-6"><div class="mobile-card">總營業額<br><b class="report-val">${Math.round(tRev).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">總支出<br><b class="report-val text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">酒水營收<br><b class="report-val">${Math.round(tAlcRev).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">食材營收<br><b class="report-val">${Math.round(tFoodRev).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">食材成本(${pct(costF, tFoodRev)}%)<br><b class="report-val">${Math.round(costF).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">酒水成本(${pct(costA, tAlcRev)}%)<br><b class="report-val">${Math.round(costA).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">總食材成本(${pct(totalCostFood, tRev)}%)<br><b class="report-val">${Math.round(totalCostFood).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">雜支總額<br><b class="report-val">${Math.round(costM).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">人事成本<br><b class="report-val">${Math.round(costHR).toLocaleString()}</b></div></div>
+      <div class="col-6"><div class="mobile-card">房租<br><b class="report-val">${val('rentInput').toLocaleString()}</b></div></div>
+    </div>`;
 }
 
-// --- 功能優化：同步提示與老闆模式 ---
-function toggleBossMode() { document.getElementById('reportArea').classList.toggle('boss-mode-blur'); }
+// --- F 頁後台設定 ---
+function renderConfig() {
+    document.getElementById('config-pay-list').innerHTML = sysConfig.pay.map((p,i)=>`
+        <div class="d-flex gap-2 mb-2">
+            <input type="text" class="form-control-mobile w-50" value="${p.name}" onchange="sysConfig.pay[${i}].name=this.value">
+            <input type="number" class="form-control-mobile w-25" value="${p.pct}" step="0.01" onchange="sysConfig.pay[${i}].pct=parseFloat(this.value)">
+            <button class="btn btn-sm btn-danger" onclick="sysConfig.pay.splice(${i},1);renderConfig()">✕</button>
+        </div>`).join('');
+}
+function addPayConfig() { sysConfig.pay.push({name:'新支付', pct:1}); renderConfig(); }
+async function saveFullConfig() {
+    const { error } = await db.from('daily_data').upsert({ date_key: 'CONFIG', memo_text: JSON.stringify(sysConfig) });
+    if(!error) alert("後台設定已儲存，請重新整理網頁。");
+}
+function setTheme(t) { sysConfig.theme = t; document.body.className = (t==='light'?'light-theme':''); }
+function setAccent(c) { sysConfig.accent = c; document.documentElement.style.setProperty('--accent-color', c); }
 
-async function syncData(type, d) {
-  const key = type==='SYSTEM' ? 'SYSTEM' : `2026-01-${d.toString().padStart(2,'0')}`;
-  const data = { date_key: key };
-  const ind = document.getElementById('sync-indicator');
-  ind.style.display = 'block'; ind.innerText = "⏳ 同步中..."; ind.style.background = "#555";
-  if(key==='SYSTEM') { data.cash = v('prevPetty'); data.bank_in = v('prevBank'); data.reg = v('rentInput'); }
-  else {
-    data.cash = v(`cash-${d}`); data.reg_val = v(`reg-${d}`); data.bank_in = v(`a-bank-${d}`); data.petty_in = v(`a-petty-${d}`);
-    data.draw_out = v(`a-draw-${d}`); data.alc_val = v(`alc-${d}`); data.takeout_val = v(`takeout-${d}`); data.from_bank = v(`b-fromBank-${d}`);
-    data.pay_vals = sysConfig.pay.map((_, i) => v(`pay-${i}-${d}`));
-    const getD = (t) => Array.from(document.querySelectorAll(`#${t}-items-${d} .dynamic-item-row`)).map(r => ({ cat: r.querySelector('select').value, name: r.querySelectorAll('input')[0].value, val: parseFloat(r.querySelectorAll('input')[1].value)||0 }));
-    data.dyn_items_b = getD('b'); data.dyn_items_c = getD('c'); data.dyn_items_d = getD('d');
-  }
-  const { error } = await db.from('daily_data').upsert(data);
-  if(!error) { ind.innerText = "✓ 已同步"; ind.style.background = "var(--hint)"; setTimeout(()=>ind.style.display='none', 2000); }
-  else { ind.innerText = "✗ 失敗"; ind.style.background = "var(--danger)"; }
+// --- G 頁使用者管理 ---
+function renderUserList() {
+    document.getElementById('user-manage-list').innerHTML = users.map((u,i)=>`
+        <div class="mobile-card d-flex justify-content-between align-items-center">
+            <div><b>${u.user}</b> (${u.safe})</div>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${i})">刪除</button>
+        </div>`).join('');
+}
+async function addUser() {
+    const n = document.getElementById('new-u-name').value, p = document.getElementById('new-u-pwd').value, s = document.getElementById('new-u-safe').value;
+    if(!n || !p) return;
+    users.push({user:n, pwd:p, safe:s, role:'staff'});
+    await saveUsers();
+}
+async function deleteUser(i) {
+    if(users[i].user==='siang') return alert("不能刪除最高權限者");
+    users.splice(i,1); await saveUsers();
+}
+async function saveUsers() {
+    await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(users) });
+    renderUserList(); renderUserSelect();
+}
+
+// --- 資料存取邏輯 ---
+async function sync(d) {
+    const ind = document.getElementById('sync-indicator');
+    ind.style.display='block'; ind.innerText="⏳ 同步中...";
+    const data = {
+        date_key: `2026-01-${d.toString().padStart(2,'0')}`,
+        cash: val(`cash-${d}`), reg_val: val(`reg-${d}`), alc_val: val(`alc-${d}`),
+        bank_in: val(`abank-${d}`), petty_in: val(`apetty-${d}`),
+        pay_vals: sysConfig.pay.map((_,i)=> val(`pay-${i}-${d}`)),
+        b_vals: [0,1,2,3,4,5,6,7,8,9].map(i=> val(`b-v-${d}-${i}`)),
+        c_vals: [0,1,2,3,4,5,6,7].map(i=> val(`c-v-${d}-${i}`)),
+        d_vals: [0,1,2,3,4].map(i=> val(`d-v-${d}-${i}`)),
+        memo_text: document.getElementById(`d-memo-${d}`).value
+    };
+    const { error } = await db.from('daily_data').upsert(data);
+    if(!error) { ind.innerText="✓ 已儲存"; setTimeout(()=>ind.style.display='none',1500); calcAll(); }
 }
 
 async function loadDailyData() {
-  const { data } = await db.from('daily_data').select('*');
-  if(!data) return;
-  data.forEach(item => {
-    if(item.date_key === "SYSTEM") {
-      document.getElementById('prevPetty').value = item.cash;
-      document.getElementById('prevBank').value = item.bank_in;
-      document.getElementById('rentInput').value = item.reg || 0;
-    } else if(item.date_key.startsWith("2026")) {
-      const d = parseInt(item.date_key.split('-')[2]);
-      if(!document.getElementById(`cash-${d}`)) return;
-      document.getElementById(`cash-${d}`).value = (item.cash && item.cash > 0) ? item.cash : 6000;
-      document.getElementById(`reg-${d}`).value = (item.reg_val && item.reg_val > 0) ? item.reg_val : 6000;
-      document.getElementById(`a-bank-${d}`).value = item.bank_in;
-      document.getElementById(`a-petty-${d}`).value = item.petty_in;
-      document.getElementById(`a-draw-${d}`).value = item.draw_out;
-      document.getElementById(`alc-${d}`).value = item.alc_val;
-      document.getElementById(`takeout-${d}`).value = item.takeout_val;
-      document.getElementById(`b-fromBank-${d}`).value = item.from_bank || 0;
-      item.pay_vals?.forEach((val, i) => { if(document.getElementById(`pay-${i}-${d}`)) document.getElementById(`pay-${i}-${d}`).value = val; });
-      item.dyn_items_b?.forEach(obj => addDynRow('B', d, obj));
-      item.dyn_items_c?.forEach(obj => addDynRow('C', d, obj));
-      item.dyn_items_d?.forEach(obj => addDynRow('D', d, obj));
-    }
-  });
-  calcAll();
+    const { data } = await db.from('daily_data').select('*');
+    if(!data) return;
+    data.forEach(item => {
+        if(item.date_key === 'SYSTEM') {
+            document.getElementById('prevPetty').value = item.cash;
+            document.getElementById('prevBank').value = item.bank_in;
+            document.getElementById('rentInput').value = item.reg_val || 0;
+        } else if(item.date_key.startsWith('2026')) {
+            const d = parseInt(item.date_key.split('-')[2]);
+            if(!document.getElementById(`cash-${d}`)) return;
+            document.getElementById(`cash-${d}`).value = item.cash || 6000;
+            document.getElementById(`reg-${d}`).value = item.reg_val || 6000;
+            document.getElementById(`alc-${d}`).value = item.alc_val || 0;
+            document.getElementById(`abank-${d}`).value = item.bank_in || 0;
+            document.getElementById(`apetty-${d}`).value = item.petty_in || 0;
+            item.pay_vals?.forEach((v,i)=> { if(document.getElementById(`pay-${i}-${d}`)) document.getElementById(`pay-${i}-${d}`).value=v; });
+            item.b_vals?.forEach((v,i)=> { if(document.getElementById(`b-v-${d}-${i}`)) document.getElementById(`b-v-${d}-${i}`).value=v; });
+            item.c_vals?.forEach((v,i)=> { if(document.getElementById(`c-v-${d}-${i}`)) document.getElementById(`c-v-${d}-${i}`).value=v; });
+            item.d_vals?.forEach((v,i)=> { if(document.getElementById(`d-v-${d}-${i}`)) document.getElementById(`d-v-${d}-${i}`).value=v; });
+            document.getElementById(`d-memo-${d}`).value = item.memo_text || '';
+        }
+    });
+    calcAll();
 }
 
-// --- 通用功能 ---
-async function loadConfig() { const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle(); if(data) sysConfig = JSON.parse(data.memo_text); }
-async function loadUsers() { const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle(); if(data) users = JSON.parse(data.memo_text); }
-function showPage(p) {
-  document.querySelectorAll('.page-content').forEach(pg => pg.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page'+p).classList.add('active');
-  const items = Array.from(document.querySelectorAll('.nav-item'));
-  const target = items.find(x => x.innerText.includes(p === 'A'?'營':p === 'B'?'零':p === 'C'?'銀':p === 'D'?'進':p === 'E'?'報':p === 'F'?'後':'權'));
-  if(target) target.classList.add('active');
+async function saveSystem() {
+    await db.from('daily_data').upsert({ date_key: 'SYSTEM', cash: val('prevPetty'), bank_in: val('prevBank'), reg_val: val('rentInput') });
+    calcAll();
 }
-const v = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+
+async function loadConfig() { 
+    const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle(); 
+    if(data) { sysConfig = JSON.parse(data.memo_text); renderConfig(); }
+}
+async function loadUsers() { 
+    const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle(); 
+    if(data) { users = JSON.parse(data.memo_text); renderUserSelect(); renderUserList(); }
+}
+
+function showPage(p) {
+    document.querySelectorAll('.page-content').forEach(pg=>pg.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(ni=>ni.classList.remove('active'));
+    document.getElementById('page'+p).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+function toggle(p, d) { 
+    const el = document.getElementById(`c-${p}-${d}`); 
+    el.style.display = (el.style.display==='none'?'block':'none'); 
+}
+function val(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+function toggleBossMode() { document.getElementById('reportArea').classList.toggle('boss-mode-blur'); }
 </script>
 </body>
 </html>
