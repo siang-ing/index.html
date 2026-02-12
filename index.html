@@ -3,59 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>2026 店務系統 - 終極版</title>
+  <title>2026 店務系統 - 跨月旗艦版</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* 這裡包含了 F 頁要求的顏色變換邏輯 */
     :root { 
       --bg-color: #121212; --text-color: #ffffff; --accent-color: #bb86fc;
       --card-bg: rgba(255,255,255,0.08); --input-bg: rgba(255,255,255,0.12);
+      --hint: #03dac6; --danger: #ff5252;
     }
     body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding-bottom: 90px; }
     .light-theme { --bg-color: #f8f9fa; --text-color: #212529; --accent-color: #6200ee; --card-bg: #ffffff; --input-bg: #ffffff; }
     
     #login-overlay { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .form-control-mobile { background: var(--input-bg) !important; border: 1px solid #444 !important; color: var(--text-color) !important; border-radius: 6px; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-color); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
+    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); }
+    .card-date { font-weight: bold; color: var(--accent-color); display: flex; justify-content: space-between; cursor: pointer; align-items: center; }
+    .form-label { font-size: 0.8rem; color: #aaa; margin-bottom: 2px; font-weight: bold; }
+    .form-control-mobile { background: var(--input-bg) !important; border: 1px solid #444 !important; color: var(--text-color) !important; border-radius: 6px; padding: 6px; font-size: 0.9rem; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: rgba(0,0,0,0.9); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
     .nav-item { text-align: center; color: #888; text-decoration: none; font-size: 0.7rem; flex: 1; cursor: pointer; }
     .nav-item.active { color: var(--accent-color); font-weight: bold; }
     .nav-item i { display: block; font-size: 1.2rem; font-style: normal; margin-bottom: 2px; }
     .page-content { display: none; padding-top: 10px; }
     .page-content.active { display: block; }
-    .sync-status { position: fixed; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-size: 12px; z-index: 10001; }
+    .sync-status { position: fixed; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-size: 11px; z-index: 10001; }
     .boss-mode-blur .report-val { filter: blur(10px); }
+    .today-tag { background: var(--hint); color: #000; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: bold; }
+    .month-selector { background: var(--card-bg); margin: 0 15px 15px 15px; padding: 12px; border-radius: 12px; border: 1px solid var(--accent-color); display: flex; align-items: center; justify-content: space-between; }
   </style>
 </head>
 <body>
 
-<div id="sync-indicator" class="sync-status text-white" style="display:none; background: #03dac6;"></div>
+<div id="sync-indicator" class="sync-status text-white" style="display:none; background: var(--hint);"></div>
 
 <div id="login-overlay">
   <div class="p-4 w-100" style="max-width: 350px;">
-    <h3 class="text-center mb-4" style="color: var(--accent-color);">系統登入</h3>
+    <h3 class="text-center mb-4" style="color: var(--accent-color);">2026 店務系統</h3>
     <select id="user-select" class="form-select form-control-mobile mb-3"></select>
-    <input type="password" id="login-pwd" class="form-control-mobile form-control mb-4" placeholder="請輸入密碼">
+    <input type="password" id="login-pwd" class="form-control-mobile form-control mb-4" placeholder="密碼">
     <button class="btn btn-primary w-100 py-2" onclick="authLogin()" style="background:var(--accent-color); border:none;">確認登入</button>
   </div>
 </div>
 
 <div id="app" style="display:none;">
+  
   <div id="pageA" class="page-content active">
+    <div class="month-selector">
+        <span style="font-weight:bold;">📅 報表月份</span>
+        <input type="month" id="global-month" class="form-control-mobile" style="width: 140px;" onchange="changeMonth()">
+    </div>
     <h5 class="text-center mb-3">A. 每日營收</h5>
     <div id="listA"></div>
   </div>
 
   <div id="pageB" class="page-content">
     <h5 class="text-center mb-3">B. 零用金支出</h5>
-    <div class="mobile-card">上月零用餘額: <input type="number" id="prevPetty" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
+    <div class="mobile-card">
+        <label>上月零用餘額 (本月獨立):</label> 
+        <input type="number" id="prevPetty" class="form-control-mobile d-inline-block w-50 ms-2" onchange="saveSystem()">
+    </div>
     <div id="listB"></div>
   </div>
 
   <div id="pageC" class="page-content">
     <h5 class="text-center mb-3">C. 銀行收支</h5>
-    <div class="mobile-card">上月銀行餘額: <input type="number" id="prevBank" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
+    <div class="mobile-card">
+        <label>上月銀行餘額 (本月獨立):</label> 
+        <input type="number" id="prevBank" class="form-control-mobile d-inline-block w-50 ms-2" onchange="saveSystem()">
+    </div>
     <div id="listC"></div>
   </div>
 
@@ -66,31 +81,34 @@
 
   <div id="pageE" class="page-content">
     <h5 class="text-center mb-3">E. 月度損益報表 <button class="btn btn-sm btn-outline-secondary" onclick="toggleBossMode()">👁️</button></h5>
-    <div class="mobile-card">房租支出: <input type="number" id="rentInput" class="form-control-mobile d-inline-block w-50" onchange="saveSystem()"></div>
+    <div class="mobile-card">
+        <label>房租支出 (本月獨立):</label> 
+        <input type="number" id="rentInput" class="form-control-mobile d-inline-block w-50 ms-2" onchange="saveSystem()">
+    </div>
     <div id="reportArea"></div>
   </div>
 
   <div id="pageF" class="page-content">
-    <h5 class="text-center mb-3 text-danger">F. 系統管理後台</h5>
-    <div class="px-3">
+    <h5 class="text-center text-danger">F. 後台設定</h5>
+    <div class="px-3" id="config-ui">
         <div class="mobile-card">
             <h6>1. 主題設定</h6>
             <button class="btn btn-sm btn-dark w-100 mb-2" onclick="setTheme('dark')">深色模式</button>
             <button class="btn btn-sm btn-light w-100 mb-2" onclick="setTheme('light')">淺色模式</button>
-            <label class="form-label mt-2">模組顏色 (Accent)</label>
+            <label class="form-label mt-2">模組顏色</label>
             <input type="color" id="accentColorPicker" class="form-control mb-3" onchange="setAccent(this.value)">
         </div>
         <div class="mobile-card">
-            <h6>2. A頁支付方式與%數</h6>
+            <h6>2. A頁支付方式管理</h6>
             <div id="config-pay-list"></div>
-            <button class="btn btn-sm btn-info w-100" onclick="addPayConfig()">+ 新增支付</button>
+            <button class="btn btn-sm btn-info w-100" onclick="addPayConfig()">+ 新增支付方式</button>
         </div>
         <button class="btn btn-danger w-100 mt-4 py-2" onclick="saveFullConfig()">儲存所有後台設定</button>
     </div>
   </div>
 
   <div id="pageG" class="page-content">
-    <h5 class="text-center mb-3 text-danger">G. 使用者權限管理</h5>
+    <h5 class="text-center text-danger">G. 使用者管理</h5>
     <div class="px-3">
         <div id="user-manage-list"></div>
         <div class="mobile-card mt-3">
@@ -98,7 +116,7 @@
             <input type="text" id="new-u-name" class="form-control-mobile w-100 mb-2" placeholder="帳號">
             <input type="password" id="new-u-pwd" class="form-control-mobile w-100 mb-2" placeholder="密碼">
             <input type="text" id="new-u-safe" class="form-control-mobile w-100 mb-2" placeholder="安全問題">
-            <button class="btn btn-success w-100" onclick="addUser()">確認新增 (需最高權限)</button>
+            <button class="btn btn-success w-100" onclick="addUser()">確認新增</button>
         </div>
     </div>
   </div>
@@ -115,275 +133,302 @@
 </div>
 
 <script>
-// --- 核心變數 ---
-let sysConfig = {
-  theme: 'dark', accent: '#bb86fc',
-  pay: [{name:'信用卡', pct:0.98}, {name:'全支付', pct:0.98}, {name:'UBER', pct:0.65}],
-  catsD: [{name:'菜商', type:'food'}, {name:'酒商', type:'alc'}]
-};
+// --- 1. 核心設定與變數 ---
+let sysConfig = { theme:'dark', accent:'#bb86fc', pay:[{name:'信用卡', pct:0.98}, {name:'全支付', pct:0.98}, {name:'UBER', pct:0.65}] };
 let users = [{user:'siang', pwd:'1234', role:'admin', safe:'老闆'}];
 const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
-// --- 初始化 ---
+// --- 2. 初始化與登入 ---
 window.onload = async () => {
-  await loadUsers(); await loadConfig(); renderUserSelect(); renderUserList();
+    // 設定預設月份為當前月份
+    const now = new Date();
+    document.getElementById('global-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    await loadUsers(); await loadConfig(); renderUserSelect(); renderUserList(); renderConfig();
 };
 
-function renderUserSelect() {
-  document.getElementById('user-select').innerHTML = users.map(u=>`<option value="${u.user}">${u.user}</option>`).join('');
-}
-
 async function authLogin() {
-  const u = document.getElementById('user-select').value, p = document.getElementById('login-pwd').value;
-  const found = users.find(x=>x.user===u && x.pwd===p);
-  if(found) {
-    document.getElementById('login-overlay').style.display='none';
-    document.getElementById('app').style.display='block';
-    if(found.user==='siang') document.querySelectorAll('.admin-btn').forEach(b=>b.style.display='block');
-    initApp();
-  } else { alert("密碼錯誤！"); }
+    const u = document.getElementById('user-select').value, p = document.getElementById('login-pwd').value;
+    const found = users.find(x=>x.user===u && x.pwd===p);
+    if(found) {
+        document.getElementById('login-overlay').style.display='none';
+        document.getElementById('app').style.display='block';
+        if(found.role==='admin') document.querySelectorAll('.admin-btn').forEach(b=>b.style.display='block');
+        initApp();
+    } else { alert("密碼錯誤"); }
 }
 
 function initApp() {
-  renderA(); renderB(); renderC(); renderD(); loadDailyData();
-  setTheme(sysConfig.theme); setAccent(sysConfig.accent);
+    // 依據選擇的月份渲染頁面
+    renderPages();
+    loadDailyData(); // 載入資料
+    setTheme(sysConfig.theme); setAccent(sysConfig.accent);
 }
 
-// --- 頁面生成 (固定欄位) ---
-function renderA() {
-  let h = '';
-  for(let d=1; d<=31; d++) {
-    h += `<div class="mobile-card">
-      <div class="card-date" onclick="toggle('A',${d})"><span>1/${d} 營收</span><span>▼</span></div>
-      <div id="c-A-${d}" style="display:none">
+function changeMonth() {
+    // 當月份切換時，重新渲染日期卡片並載入該月資料
+    renderPages();
+    loadDailyData();
+}
+
+// --- 3. 頁面生成 (全頁面收摺 + 今日自動導航) ---
+function renderPages() {
+    const monthStr = document.getElementById('global-month').value; // 2026-02
+    const [year, month] = monthStr.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate(); // 自動計算該月有幾天
+    const todayDate = new Date();
+    const isCurrentMonth = (year === todayDate.getFullYear() && month === (todayDate.getMonth()+1));
+    const todayDay = todayDate.getDate();
+
+    // 通用渲染器：負責產生每一天的卡片
+    const buildList = (containerId, title, innerHTMLFunc) => {
+        let h = '';
+        for(let d=1; d<=daysInMonth; d++) {
+            const isToday = (isCurrentMonth && d === todayDay);
+            // 預設展開今日，其他收起
+            const displayStyle = isToday ? 'block' : 'none';
+            const arrowIcon = isToday ? '▲' : '▼';
+            
+            h += `<div class="mobile-card">
+                <div class="card-date" onclick="toggleDate('${containerId}', ${d})">
+                    <span>${month}/${d} ${title} ${isToday ? '<span class="today-tag">今日</span>' : ''}</span>
+                    <span id="arr-${containerId}-${d}">${arrowIcon}</span>
+                </div>
+                <div id="box-${containerId}-${d}" style="display:${displayStyle}; border-top:1px solid rgba(255,255,255,0.1); margin-top:10px; padding-top:10px;">
+                    ${innerHTMLFunc(d)}
+                </div>
+            </div>`;
+        }
+        document.getElementById('list'+containerId).innerHTML = h;
+    };
+
+    // A 頁內容
+    buildList('A', '營收', (d) => `
         <div class="row g-2">
-          <div class="col-6"><label class="form-label">現金</label><input type="number" id="cash-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
-          <div class="col-6"><label class="form-label">底錢</label><input type="number" id="reg-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
-          ${sysConfig.pay.map((p,i)=>`<div class="col-4"><label class="form-label">${p.name}</label><input type="number" id="pay-${i}-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
-          <div class="col-6"><label class="form-label">酒水營收</label><input type="number" id="alc-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
-          <div class="col-6"><label class="form-label">入銀行</label><input type="number" id="abank-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
-          <div class="col-6"><label class="form-label">入零用</label><input type="number" id="apetty-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+            <div class="col-6"><label class="form-label">現金 (預設6k)</label><input type="number" id="cash-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
+            <div class="col-6"><label class="form-label">底錢 (預設6k)</label><input type="number" id="reg-${d}" class="form-control-mobile w-100" value="6000" onchange="sync(${d})"></div>
+            ${sysConfig.pay.map((p,i)=>`<div class="col-4"><label class="form-label">${p.name}</label><input type="number" id="pay-${i}-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+            <div class="col-6"><label class="form-label text-warning">酒水營收</label><input type="number" id="alc-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+            <div class="col-4"><label class="form-label">入銀行</label><input type="number" id="abank-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+            <div class="col-4"><label class="form-label">入零用</label><input type="number" id="apetty-${d}" class="form-control-mobile w-100" onchange="sync(${d})"></div>
+            <div class="col-12 mt-2 text-end">正負零: <b id="diff-${d}">0</b></div>
         </div>
-      </div>
-    </div>`;
-  }
-  document.getElementById('listA').innerHTML = h;
-}
+    `);
 
-function renderB() {
-  const cats = ["食品支出", "酒類支出", "外帶餐盒", "其餘雜支", "勞健保", "PT", "電信", "電費", "水費", "瓦斯"];
-  let h = '';
-  for(let d=1; d<=31; d++) {
-    h += `<div class="mobile-card">
-      <div class="card-date" onclick="toggle('B',${d})"><span>1/${d} 零用支出</span><span>▼</span></div>
-      <div id="c-B-${d}" style="display:none">
+    // B 頁內容 (10項固定)
+    const bCats = ["食品支出", "酒類支出", "外帶餐盒", "其餘雜支", "勞健保", "PT", "電信", "電費", "水費", "瓦斯"];
+    buildList('B', '支出', (d) => `
         <div class="row g-2">
-          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="b-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+            ${bCats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="b-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
         </div>
-      </div>
-    </div>`;
-  }
-  document.getElementById('listB').innerHTML = h;
-}
+    `);
 
-function renderC() {
-  const cats = ["全支付收入", "信用卡收入", "UBER收入", "其餘收入", "食品支出", "酒類支出", "雜支款", "人事款"];
-  let h = '';
-  for(let d=1; d<=31; d++) {
-    h += `<div class="mobile-card">
-      <div class="card-date" onclick="toggle('C',${d})"><span>1/${d} 銀行收支</span><span>▼</span></div>
-      <div id="c-C-${d}" style="display:none">
+    // C 頁內容 (8項固定)
+    const cCats = ["全支付收入", "信用卡收入", "UBER收入", "其餘收入", "食品支出", "酒類支出", "雜支款", "人事款"];
+    buildList('C', '銀行', (d) => `
         <div class="row g-2">
-          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="c-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+            ${cCats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="c-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
         </div>
-      </div>
-    </div>`;
-  }
-  document.getElementById('listC').innerHTML = h;
-}
+    `);
 
-function renderD() {
-  const cats = ["菜商", "海鮮商", "肉商", "酒商", "雜貨商"];
-  let h = '';
-  for(let d=1; d<=31; d++) {
-    h += `<div class="mobile-card">
-      <div class="card-date" onclick="toggle('D',${d})"><span>1/${d} 廠商月結</span><span>▼</span></div>
-      <div id="c-D-${d}" style="display:none">
+    // D 頁內容 (5廠商)
+    const dCats = ["菜商", "海鮮商", "肉商", "酒商", "雜貨商"];
+    buildList('D', '進貨', (d) => `
         <div class="row g-2">
-          ${cats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="d-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
+            ${dCats.map((c,i)=>`<div class="col-6"><label class="form-label">${c}</label><input type="number" id="d-v-${d}-${i}" class="form-control-mobile w-100" onchange="sync(${d})"></div>`).join('')}
         </div>
-      </div>
-    </div>`;
-  }
-  document.getElementById('listD').innerHTML = h;
+    `);
 }
 
-// --- 報表邏輯 (精密計算) ---
-function calcAll() {
-  let tRev = 0, tAlcRev = 0, tFoodRev = 0;
-  let tB_Food = 0, tB_Alc = 0, tB_Misc = 0, tB_HR = 0, tB_Total = 0;
-  let tC_Food = 0, tC_Alc = 0, tC_Misc = 0, tC_HR = 0, tC_Total = 0;
-  let tD_Food = 0, tD_Alc = 0, tD_Misc = 0, tD_Total = 0;
-
-  for(let d=1; d<=31; d++) {
-    // A 頁計算
-    let dPay = 0; sysConfig.pay.forEach((p,i)=> dPay += (val(`pay-${i}-${d}`) * p.pct));
-    tRev += (val(`cash-${d}`) + dPay - val(`reg-${d}`));
-    tAlcRev += val(`alc-${d}`);
-    
-    // B 頁累加
-    tB_Food += val(`b-v-${d}-0`); tB_Alc += val(`b-v-${d}-1`);
-    [2,3,4,6,7,8,9].forEach(i=> tB_Misc += val(`b-v-${d}-${i}`));
-    tB_HR += val(`b-v-${d}-5`);
-    
-    // C 頁累加 (支出項從 index 4 開始)
-    tC_Food += val(`c-v-${d}-4`); tC_Alc += val(`c-v-${d}-5`);
-    tC_Misc += val(`c-v-${d}-6`); tC_HR += val(`c-v-${d}-7`);
-    
-    // D 頁累加
-    tD_Food += (val(`d-v-${d}-0`) + val(`d-v-${d}-1`) + val(`d-v-${d}-2`));
-    tD_Alc += val(`d-v-${d}-3`); tD_Misc += val(`d-v-${d}-4`);
-  }
-
-  tFoodRev = tRev - tAlcRev;
-  const costF = tB_Food + tC_Food + tD_Food;
-  const costA = tB_Alc + tC_Alc + tD_Alc;
-  const costM = tB_Misc + tC_Misc + tD_Misc;
-  const costHR = tB_HR + tC_HR;
-  const totalCostFood = costF + costA;
-  const totalExp = tB_Total + tC_Total + (tD_Food + tD_Alc + tD_Misc) + val('rentInput') + costM + costHR;
-  const profit = tRev - totalExp;
-
-  const pct = (a, b) => b === 0 ? 0 : ((a/b)*100).toFixed(1);
-
-  document.getElementById('reportArea').innerHTML = `
-    <div class="row g-3 boss-mode-blur">
-      <div class="col-12"><div class="mobile-card text-center"><h6>本月獲利</h6><h2 class="report-val text-info">${Math.round(profit).toLocaleString()}</h2></div></div>
-      <div class="col-6"><div class="mobile-card">總營業額<br><b class="report-val">${Math.round(tRev).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">總支出<br><b class="report-val text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">酒水營收<br><b class="report-val">${Math.round(tAlcRev).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">食材營收<br><b class="report-val">${Math.round(tFoodRev).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">食材成本(${pct(costF, tFoodRev)}%)<br><b class="report-val">${Math.round(costF).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">酒水成本(${pct(costA, tAlcRev)}%)<br><b class="report-val">${Math.round(costA).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">總食材成本(${pct(totalCostFood, tRev)}%)<br><b class="report-val">${Math.round(totalCostFood).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">雜支總額<br><b class="report-val">${Math.round(costM).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">人事成本<br><b class="report-val">${Math.round(costHR).toLocaleString()}</b></div></div>
-      <div class="col-6"><div class="mobile-card">房租<br><b class="report-val">${val('rentInput').toLocaleString()}</b></div></div>
-    </div>`;
-}
-
-// --- F 頁後台設定 ---
-function renderConfig() {
-    document.getElementById('config-pay-list').innerHTML = sysConfig.pay.map((p,i)=>`
-        <div class="d-flex gap-2 mb-2">
-            <input type="text" class="form-control-mobile w-50" value="${p.name}" onchange="sysConfig.pay[${i}].name=this.value">
-            <input type="number" class="form-control-mobile w-25" value="${p.pct}" step="0.01" onchange="sysConfig.pay[${i}].pct=parseFloat(this.value)">
-            <button class="btn btn-sm btn-danger" onclick="sysConfig.pay.splice(${i},1);renderConfig()">✕</button>
-        </div>`).join('');
-}
-function addPayConfig() { sysConfig.pay.push({name:'新支付', pct:1}); renderConfig(); }
-async function saveFullConfig() {
-    const { error } = await db.from('daily_data').upsert({ date_key: 'CONFIG', memo_text: JSON.stringify(sysConfig) });
-    if(!error) alert("後台設定已儲存，請重新整理網頁。");
-}
-function setTheme(t) { sysConfig.theme = t; document.body.className = (t==='light'?'light-theme':''); }
-function setAccent(c) { sysConfig.accent = c; document.documentElement.style.setProperty('--accent-color', c); }
-
-// --- G 頁使用者管理 ---
-function renderUserList() {
-    document.getElementById('user-manage-list').innerHTML = users.map((u,i)=>`
-        <div class="mobile-card d-flex justify-content-between align-items-center">
-            <div><b>${u.user}</b> (${u.safe})</div>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${i})">刪除</button>
-        </div>`).join('');
-}
-async function addUser() {
-    const n = document.getElementById('new-u-name').value, p = document.getElementById('new-u-pwd').value, s = document.getElementById('new-u-safe').value;
-    if(!n || !p) return;
-    users.push({user:n, pwd:p, safe:s, role:'staff'});
-    await saveUsers();
-}
-async function deleteUser(i) {
-    if(users[i].user==='siang') return alert("不能刪除最高權限者");
-    users.splice(i,1); await saveUsers();
-}
-async function saveUsers() {
-    await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(users) });
-    renderUserList(); renderUserSelect();
-}
-
-// --- 資料存取邏輯 ---
+// --- 4. 資料存取 (跨月核心邏輯) ---
 async function sync(d) {
+    const monthKey = document.getElementById('global-month').value; // e.g., "2026-02"
+    const fullDate = `${monthKey}-${d.toString().padStart(2,'0')}`; // e.g., "2026-02-12"
+    
     const ind = document.getElementById('sync-indicator');
     ind.style.display='block'; ind.innerText="⏳ 同步中...";
+    
     const data = {
-        date_key: `2026-01-${d.toString().padStart(2,'0')}`,
+        date_key: fullDate,
         cash: val(`cash-${d}`), reg_val: val(`reg-${d}`), alc_val: val(`alc-${d}`),
         bank_in: val(`abank-${d}`), petty_in: val(`apetty-${d}`),
         pay_vals: sysConfig.pay.map((_,i)=> val(`pay-${i}-${d}`)),
         b_vals: [0,1,2,3,4,5,6,7,8,9].map(i=> val(`b-v-${d}-${i}`)),
         c_vals: [0,1,2,3,4,5,6,7].map(i=> val(`c-v-${d}-${i}`)),
-        d_vals: [0,1,2,3,4].map(i=> val(`d-v-${d}-${i}`)),
-        memo_text: document.getElementById(`d-memo-${d}`).value
+        d_vals: [0,1,2,3,4].map(i=> val(`d-v-${d}-${i}`))
     };
+
     const { error } = await db.from('daily_data').upsert(data);
-    if(!error) { ind.innerText="✓ 已儲存"; setTimeout(()=>ind.style.display='none',1500); calcAll(); }
+    if(!error) { 
+        ind.innerText="✓ 已儲存"; 
+        setTimeout(()=>ind.style.display='none',1500); 
+        calcAll(); 
+    }
 }
 
 async function loadDailyData() {
-    const { data } = await db.from('daily_data').select('*');
-    if(!data) return;
-    data.forEach(item => {
-        if(item.date_key === 'SYSTEM') {
-            document.getElementById('prevPetty').value = item.cash;
-            document.getElementById('prevBank').value = item.bank_in;
-            document.getElementById('rentInput').value = item.reg_val || 0;
-        } else if(item.date_key.startsWith('2026')) {
-            const d = parseInt(item.date_key.split('-')[2]);
-            if(!document.getElementById(`cash-${d}`)) return;
+    // 1. 先清空所有輸入框，避免顯示上個月的殘留資料
+    document.querySelectorAll('input[type="number"]').forEach(el => {
+        if(!el.id.includes('prev') && el.id!=='rentInput') el.value = '';
+    });
+
+    const monthKey = document.getElementById('global-month').value; // "2026-02"
+
+    // 2. 載入該月份的 System 設定 (獨立存檔)
+    const sysReq = await db.from('daily_data').select('*').eq('date_key', `SYS-${monthKey}`).maybeSingle();
+    if(sysReq.data) {
+        document.getElementById('prevPetty').value = sysReq.data.cash;
+        document.getElementById('prevBank').value = sysReq.data.bank_in;
+        document.getElementById('rentInput').value = sysReq.data.reg_val;
+    } else {
+        // 如果該月沒有設定過，歸零
+        document.getElementById('prevPetty').value = 0;
+        document.getElementById('prevBank').value = 0;
+        document.getElementById('rentInput').value = 0;
+    }
+
+    // 3. 載入該月份的所有日資料
+    const { data } = await db.from('daily_data').select('*').like('date_key', `${monthKey}%`);
+    if(data) {
+        data.forEach(item => {
+            const d = parseInt(item.date_key.split('-')[2]); // 取得日期
+            if(!document.getElementById(`cash-${d}`)) return; // 如果該日期不存在(例如2月30日)則跳過
+
             document.getElementById(`cash-${d}`).value = item.cash || 6000;
             document.getElementById(`reg-${d}`).value = item.reg_val || 6000;
             document.getElementById(`alc-${d}`).value = item.alc_val || 0;
             document.getElementById(`abank-${d}`).value = item.bank_in || 0;
             document.getElementById(`apetty-${d}`).value = item.petty_in || 0;
+            
             item.pay_vals?.forEach((v,i)=> { if(document.getElementById(`pay-${i}-${d}`)) document.getElementById(`pay-${i}-${d}`).value=v; });
             item.b_vals?.forEach((v,i)=> { if(document.getElementById(`b-v-${d}-${i}`)) document.getElementById(`b-v-${d}-${i}`).value=v; });
             item.c_vals?.forEach((v,i)=> { if(document.getElementById(`c-v-${d}-${i}`)) document.getElementById(`c-v-${d}-${i}`).value=v; });
             item.d_vals?.forEach((v,i)=> { if(document.getElementById(`d-v-${d}-${i}`)) document.getElementById(`d-v-${d}-${i}`).value=v; });
-            document.getElementById(`d-memo-${d}`).value = item.memo_text || '';
-        }
-    });
+        });
+    }
     calcAll();
 }
 
 async function saveSystem() {
-    await db.from('daily_data').upsert({ date_key: 'SYSTEM', cash: val('prevPetty'), bank_in: val('prevBank'), reg_val: val('rentInput') });
+    const monthKey = document.getElementById('global-month').value;
+    // 儲存為 SYS-2026-02 這樣的格式，確保每個月獨立
+    await db.from('daily_data').upsert({ 
+        date_key: `SYS-${monthKey}`, 
+        cash: val('prevPetty'), 
+        bank_in: val('prevBank'), 
+        reg_val: val('rentInput') 
+    });
     calcAll();
 }
 
-async function loadConfig() { 
-    const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle(); 
-    if(data) { sysConfig = JSON.parse(data.memo_text); renderConfig(); }
-}
-async function loadUsers() { 
-    const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle(); 
-    if(data) { users = JSON.parse(data.memo_text); renderUserSelect(); renderUserList(); }
+// --- 5. 報表計算 (完整邏輯) ---
+function calcAll() {
+    const monthStr = document.getElementById('global-month').value;
+    const [y, m] = monthStr.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+
+    let tRev=0, tAlcRev=0, tFoodRev=0;
+    let tB_Food=0, tB_Alc=0, tB_Misc=0, tB_HR=0;
+    let tC_Food=0, tC_Alc=0, tC_Misc=0, tC_HR=0;
+    let tD_Food=0, tD_Alc=0, tD_Misc=0;
+
+    for(let d=1; d<=daysInMonth; d++) {
+        // A 頁
+        let dPay = 0; sysConfig.pay.forEach((p,i)=> dPay += (val(`pay-${i}-${d}`) * p.pct));
+        tRev += (val(`cash-${d}`) + dPay - val(`reg-${d}`));
+        tAlcRev += val(`alc-${d}`);
+        
+        // A 頁正負零
+        let diff = Math.round((val(`cash-${d}`) - val(`reg-${d}`)) - (val(`abank-${d}`) + val(`apetty-${d}`)));
+        const de = document.getElementById(`diff-${d}`);
+        if(de) { de.innerText = diff; de.style.color = (diff===0)?'var(--hint)':'var(--danger)'; }
+
+        // B 頁累加
+        tB_Food += val(`b-v-${d}-0`); 
+        tB_Alc += val(`b-v-${d}-1`);
+        tB_HR += (val(`b-v-${d}-4`) + val(`b-v-${d}-5`)); // 勞健保+PT
+        // 雜支 = 外帶(2) + 其餘(3) + 電信(6) + 電(7) + 水(8) + 瓦斯(9)
+        [2,3,6,7,8,9].forEach(i => tB_Misc += val(`b-v-${d}-${i}`));
+
+        // C 頁累加 (從 index 4 開始是支出)
+        tC_Food += val(`c-v-${d}-4`);
+        tC_Alc += val(`c-v-${d}-5`);
+        tC_Misc += val(`c-v-${d}-6`);
+        tC_HR += val(`c-v-${d}-7`);
+
+        // D 頁累加
+        tD_Food += (val(`d-v-${d}-0`) + val(`d-v-${d}-1`) + val(`d-v-${d}-2`)); // 菜+海+肉
+        tD_Alc += val(`d-v-${d}-3`);
+        tD_Misc += val(`d-v-${d}-4`);
+    }
+
+    tFoodRev = tRev - tAlcRev;
+    const costF = tB_Food + tC_Food + tD_Food;
+    const costA = tB_Alc + tC_Alc + tD_Alc;
+    const costM = tB_Misc + tC_Misc + tD_Misc;
+    const costHR = tB_HR + tC_HR;
+    const rent = val('rentInput');
+    
+    const totalCostFood = costF + costA; // 總食材成本
+    const totalExp = totalCostFood + costM + costHR + rent;
+    const profit = tRev - totalExp;
+
+    const pct = (a, b) => b === 0 ? 0 : ((a/b)*100).toFixed(1);
+
+    document.getElementById('reportArea').innerHTML = `
+        <div class="row g-2 boss-mode-blur mt-2">
+            <div class="col-12"><div class="mobile-card text-center" style="border-left:none; background:var(--accent-color); color:#000;">
+                <h6>本月獲利</h6><h2 class="report-val" style="font-weight:900">${Math.round(profit).toLocaleString()}</h2>
+            </div></div>
+            <div class="col-6"><div class="mobile-card">總營業額<br><b class="report-val">${Math.round(tRev).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">總支出<br><b class="report-val text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">食材成本 (${pct(costF, tFoodRev)}%)<br><b class="report-val">${Math.round(costF).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">酒水成本 (${pct(costA, tAlcRev)}%)<br><b class="report-val">${Math.round(costA).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">總食材成本 (${pct(totalCostFood, tRev)}%)<br><b class="report-val">${Math.round(totalCostFood).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">人事成本<br><b class="report-val">${Math.round(costHR).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">雜支總額<br><b class="report-val">${Math.round(costM).toLocaleString()}</b></div></div>
+            <div class="col-6"><div class="mobile-card">房租<br><b class="report-val">${rent.toLocaleString()}</b></div></div>
+        </div>`;
 }
 
+// --- 6. 輔助功能 ---
+function toggleDate(type, d) {
+    const el = document.getElementById(`box-${type}-${d}`);
+    const arr = document.getElementById(`arr-${type}-${d}`);
+    const isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+    arr.innerText = isHidden ? '▲' : '▼';
+}
 function showPage(p) {
     document.querySelectorAll('.page-content').forEach(pg=>pg.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(ni=>ni.classList.remove('active'));
     document.getElementById('page'+p).classList.add('active');
     event.currentTarget.classList.add('active');
 }
-function toggle(p, d) { 
-    const el = document.getElementById(`c-${p}-${d}`); 
-    el.style.display = (el.style.display==='none'?'block':'none'); 
-}
-function val(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
 function toggleBossMode() { document.getElementById('reportArea').classList.toggle('boss-mode-blur'); }
+function val(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+
+// F 頁 & G 頁相關
+async function loadConfig() { const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle(); if(data) { sysConfig = JSON.parse(data.memo_text); renderConfig(); } }
+async function loadUsers() { const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle(); if(data) { users = JSON.parse(data.memo_text); renderUserSelect(); renderUserList(); } }
+async function saveFullConfig() { await db.from('daily_data').upsert({ date_key: 'CONFIG', memo_text: JSON.stringify(sysConfig) }); alert("設定已儲存"); }
+function renderConfig() { 
+    document.getElementById('config-pay-list').innerHTML = sysConfig.pay.map((p,i)=>`
+    <div class="d-flex gap-2 mb-2"><input class="form-control-mobile" value="${p.name}" onchange="sysConfig.pay[${i}].name=this.value">
+    <input type="number" class="form-control-mobile w-25" value="${p.pct}" step="0.01" onchange="sysConfig.pay[${i}].pct=parseFloat(this.value)">
+    <button class="btn btn-sm btn-danger" onclick="sysConfig.pay.splice(${i},1);renderConfig()">✕</button></div>`).join('');
+}
+function addPayConfig() { sysConfig.pay.push({name:'新支付', pct:1}); renderConfig(); }
+function setTheme(t) { sysConfig.theme = t; document.body.className = (t==='light'?'light-theme':''); }
+function setAccent(c) { sysConfig.accent = c; document.documentElement.style.setProperty('--accent-color', c); }
+function renderUserList() { document.getElementById('user-manage-list').innerHTML = users.map((u,i)=>`<div class="mobile-card d-flex justify-content-between"><div><b>${u.user}</b></div><button class="btn btn-sm btn-outline-danger" onclick="delUser(${i})">刪除</button></div>`).join(''); }
+function renderUserSelect() { document.getElementById('user-select').innerHTML = users.map(u=>`<option value="${u.user}">${u.user}</option>`).join(''); }
+async function addUser() { 
+    const n=document.getElementById('new-u-name').value, p=document.getElementById('new-u-pwd').value, s=document.getElementById('new-u-safe').value;
+    if(!n||!p) return; users.push({user:n, pwd:p, safe:s, role:'staff'}); await db.from('daily_data').upsert({date_key:'USERS', memo_text:JSON.stringify(users)}); renderUserList();
+}
+async function delUser(i) { if(users[i].user==='siang') return alert('不可刪除最高權限'); users.splice(i,1); await db.from('daily_data').upsert({date_key:'USERS', memo_text:JSON.stringify(users)}); renderUserList(); }
 </script>
 </body>
 </html>
