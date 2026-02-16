@@ -213,10 +213,20 @@ const db = supabase.createClient(SB_URL, SB_KEY);
 window.onload = async () => {
     const now = new Date();
     document.getElementById('global-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    renderUserSelect();
+    
+    // 優先確保有基礎帳號可以選
+    users = [
+        {user:'老闆', pwd:'1234', role:'boss'},
+        {user:'店長', pwd:'5678', role:'manager'},
+        {user:'員工', pwd:'0000', role:'staff'}
+    ];
+    renderUserSelect(); 
+
     try {
         await Promise.all([loadConfig(), loadUsers()]);
     } catch(e) { console.error("初始化資料失敗", e); }
+    
+    // 資料載入後再次刷新選單
     renderUserSelect();
     updateTheme();
 };
@@ -236,28 +246,44 @@ function authLogin() {
         currentUser = found;
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
+        
+        // 執行權限鎖定
         applyPermissions();
         initApp();
+
+        // 員工強行重導向到 A 頁
+        if (currentUser.role === 'staff') showPage('A');
     } else {
-        alert("密碼不正確！");
+        alert("密碼錯誤！");
     }
 }
 
 function applyPermissions() {
+    if (!currentUser) return;
     const role = currentUser.role;
     const user = currentUser.user;
 
-    // A, B, C, D 所有人可見
-    // E 報表：員工不可見，老闆/店長可見
-    document.getElementById('nav-E').style.display = (role === 'staff') ? 'none' : 'block';
-    
-    // F, G 後台與權限：僅限「老闆」可見
-    const isBoss = (user === '老闆' || role === 'boss');
-    document.getElementById('nav-F').style.display = isBoss ? 'block' : 'none';
-    document.getElementById('nav-G').style.display = isBoss ? 'block' : 'none';
+    const navE = document.getElementById('nav-E'); // 報表
+    const navF = document.getElementById('nav-F'); // 後台
+    const navG = document.getElementById('nav-G'); // 權限
+    const eyeBtn = document.getElementById('boss-eye-btn'); // 眼睛
 
-    // 👁️ 眼睛按鈕：僅限「老闆」與「店長」可見
-    document.getElementById('boss-eye-btn').style.display = (role === 'staff') ? 'none' : 'inline-block';
+    // 1. 先全部隱藏
+    [navE, navF, navG].forEach(n => n.style.display = 'none');
+    if(eyeBtn) eyeBtn.style.display = 'none';
+
+    // 2. 根據角色開放
+    if (user === '老闆' || role === 'boss') {
+        navE.style.display = 'block';
+        navF.style.display = 'block';
+        navG.style.display = 'block';
+        if(eyeBtn) eyeBtn.style.display = 'inline-block';
+    } 
+    else if (role === 'manager') {
+        navE.style.display = 'block'; // 店長看得到報表
+        if(eyeBtn) eyeBtn.style.display = 'inline-block'; // 店長看得到眼睛
+    } 
+    // 員工 role === 'staff' 會維持全部隱藏狀態
 }
 
 // --- 頁面渲染邏輯 (全量展開) ---
@@ -521,8 +547,14 @@ async function saveFullConfig() {
 }
 
 async function loadUsers() {
-    const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
-    if (data) users = JSON.parse(data.memo_text);
+    try {
+        const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
+        // 如果資料庫有東西，才覆蓋預設值；沒東西就維持預設的三個帳號
+        if (data && data.memo_text) {
+            users = JSON.parse(data.memo_text);
+        }
+    } catch(e) { console.error("資料庫帳號載入失敗"); }
+    renderUserSelect(); 
     renderUserUI();
 }
 
@@ -564,3 +596,4 @@ function updateTheme() {
 </script>
 </body>
 </html>
+
