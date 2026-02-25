@@ -203,84 +203,31 @@ const DEFAULT_CONFIG = {
     ]
 };
 
-let users = [
-    {user:'老闆', pwd:'1234', role:'boss'},
-    {user:'店長', pwd:'5678', role:'manager'},
-    {user:'員工', pwd:'0000', role:'staff'}
-];
-
-let sysConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+// --- 覆蓋此範圍：帳號定義與權限控制 ---
+const MASTER_USERS = [{user:'老闆', pwd:'1234', role:'boss'}];
+let users = [...MASTER_USERS]; 
 let currentUser = null;
-
-const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
-const db = supabase.createClient(SB_URL, SB_KEY);
-
-window.onload = async () => {
-    const now = new Date();
-    const dateEl = document.getElementById('global-month');
-    if(dateEl) dateEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    
-    renderUserSelect(); 
-
-    try {
-        await Promise.all([loadConfig(), loadUsers()]);
-    } catch(e) { 
-        console.error("初始化資料失敗", e); 
-    }
-    
-    updateTheme();
-};
-
-// --- 登入與權限管理 ---
-function renderUserSelect() {
-    const sel = document.getElementById('user-select');
-    sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
-}
-
-function authLogin() {
-    const u = document.getElementById('user-select').value;
-    const p = document.getElementById('login-pwd').value;
-    const found = users.find(x => x.user === u && x.pwd === p);
-    
-    if(found) {
-        currentUser = found;
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        
-        applyPermissions();
-        initApp();
-
-        if (currentUser.role === 'staff') showPage('A');
-    } else {
-        alert("密碼錯誤！");
-    }
-}
 
 function applyPermissions() {
     if (!currentUser) return;
     const role = currentUser.role;
-    const user = currentUser.user;
+    // 強制判定：只要名字是「老闆」或角色是「boss」，就是最高權限
+    const isBoss = (role === 'boss' || currentUser.user === '老闆');
 
     const navE = document.getElementById('nav-E'); 
     const navF = document.getElementById('nav-F'); 
     const navG = document.getElementById('nav-G'); 
     const eyeBtn = document.getElementById('boss-eye-btn'); 
 
-    [navE, navF, navG].forEach(n => n.style.display = 'none');
-    if(eyeBtn) eyeBtn.style.display = 'none';
+    // 1. 報表與眼睛 (店長以上可見)
+    if(navE) navE.style.display = (isBoss || role === 'manager') ? 'block' : 'none';
+    if(eyeBtn) eyeBtn.style.display = (isBoss || role === 'manager') ? 'inline-block' : 'none';
 
-    if (user === '老闆' || role === 'boss') {
-        navE.style.display = 'block';
-        navF.style.display = 'block';
-        navG.style.display = 'block';
-        if(eyeBtn) eyeBtn.style.display = 'inline-block';
-    } 
-    else if (role === 'manager') {
-        navE.style.display = 'block';
-        if(eyeBtn) eyeBtn.style.display = 'inline-block';
-    } 
+    // 2. 後台與權限管理 (僅限最高權限可見)
+    if(navF) navF.style.display = isBoss ? 'block' : 'none';
+    if(navG) navG.style.display = isBoss ? 'block' : 'none';
 }
+// --- 範圍結束 ---
 
 // --- 頁面渲染邏輯 ---
 function initApp() { renderPages(); loadDailyData(); }
@@ -540,17 +487,28 @@ async function saveFullConfig() {
     alert("設定已儲存！");
 }
 
+// --- 覆蓋此範圍：確保「老闆」永遠併入選單 ---
 async function loadUsers() {
     try {
         const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
         if (data && data.memo_text) {
-            const dbUsers = JSON.parse(data.memo_text);
-            if(dbUsers && dbUsers.length > 0) users = dbUsers; 
+            let dbUsers = JSON.parse(data.memo_text);
+            
+            // 以 MASTER_USERS 為底，合併雲端帳號
+            const combined = [...MASTER_USERS];
+            dbUsers.forEach(du => {
+                if(!combined.some(mu => mu.user === du.user)) {
+                    combined.push(du);
+                }
+            });
+            users = combined;
         }
-    } catch(e) { console.error("資料庫帳號載入失敗"); }
-    renderUserSelect(); 
-    renderUserUI();
+    } catch(e) { console.error("帳號載入異常", e); }
+    
+    renderUserSelect(); // 更新登入選單
+    if(typeof renderUserUI === 'function') renderUserUI(); // 更新權限管理列表
 }
+// --- 範圍結束 ---
 
 function renderUserUI() {
     const box = document.getElementById('user-manage-list');
@@ -563,26 +521,34 @@ function renderUserUI() {
     `).join('');
 }
 
+// --- 覆蓋此範圍：優化儲存邏輯 ---
 async function addUser() {
     const n = document.getElementById('new-u-name').value;
     const p = document.getElementById('new-u-pwd').value;
     const r = document.getElementById('new-u-role').value;
     if (n && p) {
         users.push({ user: n, pwd: p, role: r });
-        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(users) });
-        renderUserUI();
-        renderUserSelect();
+        // 重要：存入資料庫時過濾掉寫死的「老闆」，保持資料庫乾淨
+        const toStore = users.filter(u => u.user !== '老闆');
+        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
+        
+        loadUsers(); 
         alert("新增成功！");
     }
 }
 
 async function delUser(i) {
     if (confirm("確定要刪除此帳號嗎？")) {
+        // 先移除選定的帳號
         users.splice(i, 1);
-        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(users) });
-        renderUserUI();
-        renderUserSelect();
+        // 儲存時同樣過濾掉預設的「老闆」
+        const toStore = users.filter(u => u.user !== '老闆');
+        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
+        
+        loadUsers();
     }
+}
+// --- 範圍結束 ---
 }
 
 function updateTheme() {
@@ -592,3 +558,4 @@ function updateTheme() {
 </script>
 </body>
 </html>
+
