@@ -550,6 +550,51 @@ async function delUser(i) {
 }
 // --- 範圍結束 ---
 
+// --- 補齊缺失的關鍵函數與初始化 ---
+
+function renderUserSelect() {
+    const sel = document.getElementById('user-select');
+    if(sel) {
+        sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
+    }
+}
+
+function authLogin() {
+    const u = document.getElementById('user-select').value;
+    const p = document.getElementById('login-pwd').value;
+    const found = users.find(x => x.user === u && x.pwd === p);
+    
+    if(found) {
+        currentUser = found;
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        applyPermissions();
+        initApp();
+        if (currentUser.role === 'staff') showPage('A');
+    } else {
+        alert("密碼錯誤！");
+    }
+}
+
+// 初始化全域變數與 Supabase
+let sysConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+window.onload = async () => {
+    // 預設月份為當月
+    const now = new Date();
+    const mInput = document.getElementById('global-month');
+    if(mInput) mInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    
+    renderUserSelect();
+    try {
+        await loadConfig();
+        await loadUsers();
+        updateTheme();
+    } catch(e) { console.error("初始化失敗", e); }
+};
 function updateTheme() {
     setTheme(sysConfig.theme);
     setAccent(sysConfig.accent);
@@ -557,5 +602,6 @@ function updateTheme() {
 </script>
 </body>
 </html>
+
 
 
