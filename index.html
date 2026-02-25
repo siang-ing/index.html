@@ -11,18 +11,25 @@
       --bg-color: #121212; --text-color: #ffffff; --accent-color: #bb86fc;
       --card-bg: rgba(255,255,255,0.08); --input-bg: rgba(255,255,255,0.12);
       --hint: #03dac6; --danger: #ff5252; --nav-bg: rgba(0,0,0,0.95);
+      --label-color: #bb86fc; /* 預設標籤顏色 */
     }
     body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding-bottom: 90px; transition: 0.3s; }
-    .light-theme { --bg-color: #f8f9fa; --text-color: #212529; --accent-color: #6200ee; --card-bg: #ffffff; --input-bg: #e9ecef; --nav-bg: #fff; }
+    .light-theme { 
+      --bg-color: #f8f9fa; --text-color: #212529; --accent-color: #6200ee; 
+      --card-bg: #ffffff; --input-bg: #ffffff; --nav-bg: #ffffff;
+      --label-color: #444444; /* 淺色模式下標籤改深色，解決不可見問題 */
+    }
     
     /* 登入遮罩 */
     #login-overlay { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     
     /* 卡片與輸入框樣式 */
-    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); position: relative; }
+    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .card-date { font-weight: bold; color: var(--accent-color); display: flex; justify-content: space-between; cursor: pointer; align-items: center; }
-    .form-label { font-size: 0.85rem; color: #bbb; margin-bottom: 4px; font-weight: bold; display: block; }
-    .light-theme .form-label { color: #555; }
+    
+    /* 重點優化：標籤顏色增強 */
+    .form-label { font-size: 0.85rem; color: var(--label-color); margin-bottom: 4px; font-weight: 800; display: block; }
+    
     .form-control-mobile { background: var(--input-bg) !important; border: 1px solid #555 !important; color: var(--text-color) !important; border-radius: 6px; padding: 8px; font-size: 1rem; width: 100%; }
     .light-theme .form-control-mobile { border: 1px solid #ccc !important; }
 
@@ -44,6 +51,10 @@
     .month-selector { background: var(--card-bg); margin: 0 15px 15px 15px; padding: 12px; border-radius: 12px; border: 1px solid var(--accent-color); display: flex; align-items: center; justify-content: space-between; }
     
     .btn-del-item { font-size: 0.8rem; color: var(--danger); border: 1px solid var(--danger); background: transparent; border-radius: 5px; padding: 2px 8px; }
+    
+    /* 收入支出顏色輔助 */
+    .text-income { color: #03dac6 !important; }
+    .text-expense { color: #ff5252 !important; }
   </style>
 </head>
 <body>
@@ -162,6 +173,7 @@
   </nav>
 </div>
 
+<script>
 // --- [重點] 核心固定項目與邏輯：嚴禁刪減 ---
 const DEFAULT_CONFIG = {
     theme: 'dark', 
@@ -191,7 +203,6 @@ const DEFAULT_CONFIG = {
     ]
 };
 
-// 【重要】確保這裡直接定義好，不要在 onload 裡面用 users = [...] 覆蓋
 let users = [
     {user:'老闆', pwd:'1234', role:'boss'},
     {user:'店長', pwd:'5678', role:'manager'},
@@ -205,25 +216,19 @@ const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
-// 修正後的啟動順序
 window.onload = async () => {
-    // 1. 設定日期
     const now = new Date();
     const dateEl = document.getElementById('global-month');
     if(dateEl) dateEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     
-    // 2. 立即顯示預設帳號 (這步解決你的選單空白問題)
     renderUserSelect(); 
 
-    // 3. 嘗試載入資料庫資料
     try {
         await Promise.all([loadConfig(), loadUsers()]);
     } catch(e) { 
         console.error("初始化資料失敗", e); 
     }
     
-    // 4. 全部載入後再次刷新 UI
-    renderUserSelect();
     updateTheme();
 };
 
@@ -243,11 +248,9 @@ function authLogin() {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         
-        // 執行權限鎖定
         applyPermissions();
         initApp();
 
-        // 員工強行重導向到 A 頁
         if (currentUser.role === 'staff') showPage('A');
     } else {
         alert("密碼錯誤！");
@@ -259,16 +262,14 @@ function applyPermissions() {
     const role = currentUser.role;
     const user = currentUser.user;
 
-    const navE = document.getElementById('nav-E'); // 報表
-    const navF = document.getElementById('nav-F'); // 後台
-    const navG = document.getElementById('nav-G'); // 權限
-    const eyeBtn = document.getElementById('boss-eye-btn'); // 眼睛
+    const navE = document.getElementById('nav-E'); 
+    const navF = document.getElementById('nav-F'); 
+    const navG = document.getElementById('nav-G'); 
+    const eyeBtn = document.getElementById('boss-eye-btn'); 
 
-    // 1. 先全部隱藏
     [navE, navF, navG].forEach(n => n.style.display = 'none');
     if(eyeBtn) eyeBtn.style.display = 'none';
 
-    // 2. 根據角色開放
     if (user === '老闆' || role === 'boss') {
         navE.style.display = 'block';
         navF.style.display = 'block';
@@ -276,13 +277,12 @@ function applyPermissions() {
         if(eyeBtn) eyeBtn.style.display = 'inline-block';
     } 
     else if (role === 'manager') {
-        navE.style.display = 'block'; // 店長看得到報表
-        if(eyeBtn) eyeBtn.style.display = 'inline-block'; // 店長看得到眼睛
+        navE.style.display = 'block';
+        if(eyeBtn) eyeBtn.style.display = 'inline-block';
     } 
-    // 員工 role === 'staff' 會維持全部隱藏狀態
 }
 
-// --- 頁面渲染邏輯 (全量展開) ---
+// --- 頁面渲染邏輯 ---
 function initApp() { renderPages(); loadDailyData(); }
 function changeMonth() { renderPages(); loadDailyData(); }
 
@@ -311,7 +311,6 @@ function renderPages() {
         document.getElementById('list' + id).innerHTML = html;
     };
 
-    // A 頁面結構
     build('A', '營收', (d) => `
         <div class="row g-2">
             <div class="col-6"><label class="form-label">現金 (手點)</label><input type="number" id="cash-${d}" class="form-control-mobile" value="6000" onchange="sync(${d})"></div>
@@ -326,7 +325,6 @@ function renderPages() {
         </div>
     `);
 
-    // B 頁面結構
     build('B', '零用支出', (d) => `
         <div class="row g-2">
             ${sysConfig.catsB.map((c, i) => `
@@ -335,16 +333,17 @@ function renderPages() {
         </div>
     `);
 
-    // C 頁面結構
     build('C', '銀行收支', (d) => `
         <div class="row g-2">
             ${sysConfig.catsC.map((c, i) => `
-                <div class="col-6"><label class="form-label">${c.name}</label><input type="number" id="c-v-${d}-${i}" class="form-control-mobile" onchange="sync(${d})"></div>
+                <div class="col-6">
+                    <label class="form-label ${c.type==='income'?'text-income':'text-expense'}">${c.name}</label>
+                    <input type="number" id="c-v-${d}-${i}" class="form-control-mobile" onchange="sync(${d})">
+                </div>
             `).join('')}
         </div>
     `);
 
-    // D 頁面結構
     build('D', '進貨進項', (d) => `
         <div class="row g-2">
             ${sysConfig.catsD.map((c, i) => `
@@ -354,7 +353,7 @@ function renderPages() {
     `);
 }
 
-// --- 資料庫同步與計算 (全量展開) ---
+// --- 資料庫同步與計算 ---
 async function sync(d) {
     const mk = document.getElementById('global-month').value;
     const ind = document.getElementById('sync-indicator');
@@ -407,7 +406,6 @@ async function loadDailyData() {
         });
     }
 
-    // 載入該月份獨立的餘額與房租
     const sys = await db.from('daily_data').select('*').eq('date_key', `SYS-${mk}`).maybeSingle();
     if (sys.data) {
         document.getElementById('prevPetty').value = sys.data.cash || 0;
@@ -439,7 +437,6 @@ function calcAll() {
     let tRev = 0, tAlcRev = 0, costF = 0, costA = 0, costM = 0, costHR = 0;
     
     for (let d = 1; d <= days; d++) {
-        // A 頁正負零與營收
         let dPayNet = 0; 
         sysConfig.pay.forEach((p, i) => dPayNet += (val(`pay-${i}-${d}`) * p.pct));
         
@@ -454,7 +451,6 @@ function calcAll() {
             de.style.color = (diff === 0) ? 'var(--hint)' : 'var(--danger)';
         }
 
-        // B/C/D 支出加總
         const sum = (prefix, config) => config.forEach((c, i) => {
             const v = val(`${prefix}-${d}-${i}`);
             if (c.type === 'food') costF += v;
@@ -492,6 +488,7 @@ function val(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
 function toggle(id, d) {
     const e = document.getElementById(`box-${id}-${d}`);
     const a = document.getElementById(`arr-${id}-${d}`);
+    if(!e) return;
     const isHidden = e.style.display === 'none';
     e.style.display = isHidden ? 'block' : 'none';
     a.innerText = isHidden ? '▲' : '▼';
@@ -529,6 +526,7 @@ async function loadConfig() {
 
 function renderConfigUI() {
     const box = document.getElementById('cfg-list-pay');
+    if(!box) return;
     box.innerHTML = sysConfig.pay.map((p, i) => `
         <div class="d-flex gap-2 mb-2">
             <input type="text" class="form-control-mobile" value="${p.name}" readonly>
@@ -545,9 +543,9 @@ async function saveFullConfig() {
 async function loadUsers() {
     try {
         const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
-        // 如果資料庫有東西，才覆蓋預設值；沒東西就維持預設的三個帳號
         if (data && data.memo_text) {
-            users = JSON.parse(data.memo_text);
+            const dbUsers = JSON.parse(data.memo_text);
+            if(dbUsers && dbUsers.length > 0) users = dbUsers; 
         }
     } catch(e) { console.error("資料庫帳號載入失敗"); }
     renderUserSelect(); 
@@ -555,7 +553,9 @@ async function loadUsers() {
 }
 
 function renderUserUI() {
-    document.getElementById('user-manage-list').innerHTML = users.map((u, i) => `
+    const box = document.getElementById('user-manage-list');
+    if(!box) return;
+    box.innerHTML = users.map((u, i) => `
         <div class="mobile-card d-flex justify-content-between align-items-center">
             <div><b>${u.user}</b> <small>(${u.role})</small></div>
             ${u.user !== '老闆' ? `<button class="btn-del-item" onclick="delUser(${i})">✕ 刪除</button>` : ''}
@@ -592,5 +592,3 @@ function updateTheme() {
 </script>
 </body>
 </html>
-
-
