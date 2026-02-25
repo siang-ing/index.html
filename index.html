@@ -528,10 +528,8 @@ async function addUser() {
     const r = document.getElementById('new-u-role').value;
     if (n && p) {
         users.push({ user: n, pwd: p, role: r });
-        // 重要：存入資料庫時過濾掉寫死的「老闆」，保持資料庫乾淨
         const toStore = users.filter(u => u.user !== '老闆');
         await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
-        
         loadUsers(); 
         alert("新增成功！");
     }
@@ -539,18 +537,14 @@ async function addUser() {
 
 async function delUser(i) {
     if (confirm("確定要刪除此帳號嗎？")) {
-        // 先移除選定的帳號
         users.splice(i, 1);
-        // 儲存時同樣過濾掉預設的「老闆」
         const toStore = users.filter(u => u.user !== '老闆');
         await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
-        
         loadUsers();
     }
 }
-// --- 範圍結束 ---
 
-// --- 補齊缺失的關鍵函數與初始化 ---
+// --- 修正：補回被遺漏或解析失敗的關鍵函數 ---
 
 function renderUserSelect() {
     const sel = document.getElementById('user-select');
@@ -570,38 +564,40 @@ function authLogin() {
         document.getElementById('app').style.display = 'block';
         applyPermissions();
         initApp();
+        // 如果是員工身分，預設跳轉到 A 頁面
         if (currentUser.role === 'staff') showPage('A');
     } else {
         alert("密碼錯誤！");
     }
 }
 
-// 初始化全域變數與 Supabase
+function updateTheme() {
+    setTheme(sysConfig.theme);
+    setAccent(sysConfig.accent);
+}
+
+// --- 補回：資料庫初始化與自動執行程序 ---
 let sysConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
 window.onload = async () => {
-    // 預設月份為當月
+    // 1. 設定預設月份
     const now = new Date();
     const mInput = document.getElementById('global-month');
     if(mInput) mInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     
+    // 2. 初始渲染選單
     renderUserSelect();
+    
+    // 3. 從資料庫讀取設定與帳號
     try {
         await loadConfig();
         await loadUsers();
         updateTheme();
-    } catch(e) { console.error("初始化失敗", e); }
+    } catch(e) { 
+        console.error("啟動失敗", e); 
+    }
 };
-function updateTheme() {
-    setTheme(sysConfig.theme);
-    setAccent(sysConfig.accent);
-}
-</script>
-</body>
-</html>
-
-
-
+// --- 結束 ---
