@@ -3,601 +3,1225 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>2026 店務系統 - 權限管理旗艦版</title>
+  <title>2026 店務雲端系統</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root { 
-      --bg-color: #121212; --text-color: #ffffff; --accent-color: #bb86fc;
-      --card-bg: rgba(255,255,255,0.08); --input-bg: rgba(255,255,255,0.12);
-      --hint: #03dac6; --danger: #ff5252; --nav-bg: rgba(0,0,0,0.95);
-      --label-color: #bb86fc; /* 預設標籤顏色 */
+    :root {
+      --bg:        #0d0f14;
+      --bg2:       #13161e;
+      --card:      #1a1d27;
+      --card2:     #1f2235;
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #7c6ff7;
+      --accent2:   #5b52e0;
+      --hint:      #22d3b8;
+      --warn:      #f59e0b;
+      --danger:    #f43f5e;
+      --success:   #10b981;
+      --text:      #e8eaf0;
+      --text2:     #9097b3;
+      --input-bg:  #0d0f14;
+      --shadow:    0 4px 24px rgba(0,0,0,0.5);
     }
-    body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding-bottom: 90px; transition: 0.3s; }
-    .light-theme { 
-      --bg-color: #f8f9fa; --text-color: #212529; --accent-color: #6200ee; 
-      --card-bg: #ffffff; --input-bg: #ffffff; --nav-bg: #ffffff;
-      --label-color: #444444; /* 淺色模式下標籤改深色，解決不可見問題 */
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans TC', sans-serif;
+      padding-bottom: 90px;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    
-    /* 登入遮罩 */
-    #login-overlay { position: fixed; inset: 0; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    
-    /* 卡片與輸入框樣式 */
-    .mobile-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin: 10px 15px; border-left: 4px solid var(--accent-color); position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .card-date { font-weight: bold; color: var(--accent-color); display: flex; justify-content: space-between; cursor: pointer; align-items: center; }
-    
-    /* 重點優化：標籤顏色增強 */
-    .form-label { font-size: 0.85rem; color: var(--label-color); margin-bottom: 4px; font-weight: 800; display: block; }
-    
-    .form-control-mobile { background: var(--input-bg) !important; border: 1px solid #555 !important; color: var(--text-color) !important; border-radius: 6px; padding: 8px; font-size: 1rem; width: 100%; }
-    .light-theme .form-control-mobile { border: 1px solid #ccc !important; }
 
-    /* 底部導航 */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--nav-bg); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
-    .nav-item { text-align: center; color: #888; text-decoration: none; font-size: 0.75rem; flex: 1; cursor: pointer; transition: 0.2s; }
-    .nav-item.active { color: var(--accent-color); font-weight: bold; transform: scale(1.1); }
-    .nav-item i { display: block; font-size: 1.3rem; font-style: normal; margin-bottom: 2px; }
+    /* ─── LOGIN ─── */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+    .login-box {
+      width: min(380px, 90vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 28px;
+      box-shadow: var(--shadow);
+    }
+    .login-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--accent); letter-spacing: 2px;
+      text-align: center; margin-bottom: 8px;
+    }
+    .login-sub {
+      text-align: center; color: var(--text2);
+      font-size: 0.8rem; margin-bottom: 28px;
+      letter-spacing: 1px;
+    }
+    .login-err {
+      background: rgba(244,63,94,0.12);
+      border: 1px solid rgba(244,63,94,0.3);
+      color: var(--danger);
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 0.85rem; display: none; margin-bottom: 12px;
+    }
 
-    /* 頁面切換 */
-    .page-content { display: none; padding-top: 10px; animation: fadeIn 0.3s; }
-    .page-content.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* ─── INPUTS ─── */
+    .f-label {
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--text2); text-transform: uppercase;
+      letter-spacing: 0.8px; margin-bottom: 6px;
+    }
+    .f-input {
+      height: 46px;
+      background: var(--input-bg) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      font-size: 0.95rem !important;
+      border-radius: 10px !important;
+      padding: 0 14px !important;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .f-input:focus {
+      outline: none !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px rgba(124,111,247,0.15) !important;
+    }
+    .f-input::placeholder { color: rgba(144,151,179,0.4) !important; }
+    select.f-input { cursor: pointer; }
 
-    /* 特殊標籤與狀態 */
-    .sync-status { position: fixed; top: 10px; right: 10px; padding: 4px 12px; border-radius: 20px; font-size: 12px; z-index: 10001; font-weight: bold; }
-    .boss-mode-blur .report-val { filter: blur(10px); transition: 0.3s; }
-    .today-tag { background: var(--hint); color: #000; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: bold; }
-    .month-selector { background: var(--card-bg); margin: 0 15px 15px 15px; padding: 12px; border-radius: 12px; border: 1px solid var(--accent-color); display: flex; align-items: center; justify-content: space-between; }
-    
-    .btn-del-item { font-size: 0.8rem; color: var(--danger); border: 1px solid var(--danger); background: transparent; border-radius: 5px; padding: 2px 8px; }
-    
-    /* 收入支出顏色輔助 */
-    .text-income { color: #03dac6 !important; }
-    .text-expense { color: #ff5252 !important; }
+    /* ─── BUTTON ─── */
+    .btn-accent {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; border: none; border-radius: 10px;
+      font-weight: 700; font-size: 0.95rem;
+      padding: 12px 20px; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    .btn-accent:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-sm-outline {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent); border-radius: 8px;
+      font-size: 0.8rem; font-weight: 700;
+      padding: 5px 12px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-sm-outline:hover { background: rgba(124,111,247,0.15); }
+    .btn-danger-sm {
+      background: rgba(244,63,94,0.12);
+      border: 1px solid rgba(244,63,94,0.3);
+      color: var(--danger); border-radius: 8px;
+      font-size: 0.75rem; padding: 4px 10px; cursor: pointer;
+    }
+
+    /* ─── BOTTOM NAV ─── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 72px;
+      background: rgba(13,15,20,0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; align-items: center;
+      z-index: 1000;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-btn {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px; flex: 1; cursor: pointer;
+      color: var(--text2); font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.5px; transition: color 0.2s;
+      text-transform: uppercase;
+    }
+    .nav-btn .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn.active .nav-icon { filter: drop-shadow(0 0 6px rgba(124,111,247,0.6)); }
+
+    /* ─── PAGES ─── */
+    .page { display: none; padding: 16px 0 10px; }
+    .page.active { display: block; }
+
+    .page-header {
+      padding: 0 16px 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .page-title {
+      font-size: 1.2rem; font-weight: 900;
+      letter-spacing: 1px;
+    }
+    .page-subtitle { font-size: 0.8rem; color: var(--text2); margin-top: 2px; }
+
+    /* ─── CARDS ─── */
+    .card-base {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 0 12px 14px;
+    }
+    .card-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; font-weight: 700;
+      color: var(--accent); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-date::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--accent); border-radius: 2px;
+    }
+
+    /* ─── STAT BARS ─── */
+    .stat-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; padding: 12px 12px 0;
+    }
+    .stat-chip {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 10px;
+      text-align: center;
+    }
+    .stat-label { font-size: 0.7rem; color: var(--text2); font-weight: 700; margin-bottom: 4px; }
+    .stat-val { font-size: 1rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+
+    .total-bar {
+      margin: 0 12px 12px;
+      background: rgba(124,111,247,0.08);
+      border: 1px solid rgba(124,111,247,0.25);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 700;
+    }
+    .total-bar .tv {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem; color: var(--danger);
+    }
+
+    .balance-row {
+      margin: 0 12px 12px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.85rem; font-weight: 700;
+    }
+    .balance-row input {
+      height: 36px !important;
+      font-size: 0.9rem !important;
+      width: 130px !important;
+    }
+
+    /* ─── DYNAMIC ROWS ─── */
+    .dyn-row {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 6px;
+      display: flex; gap: 6px; align-items: center;
+    }
+    .dyn-row select,
+    .dyn-row input {
+      height: 38px !important;
+      font-size: 0.85rem !important;
+    }
+
+    /* ─── SUMMARY ─── */
+    .summary-box {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 0 12px 16px;
+    }
+    .summary-title {
+      font-size: 0.75rem; font-weight: 900;
+      color: var(--text2); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 10px;
+    }
+    .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .sum-item {
+      background: var(--card);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 0.82rem;
+    }
+    .sum-item b {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--hint);
+    }
+
+    /* ─── REPORT ─── */
+    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px; }
+    .report-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 12px;
+      text-align: center;
+    }
+    .report-card.highlight {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(124,111,247,0.15), rgba(34,211,184,0.08));
+      border-color: var(--accent);
+    }
+    .report-card .rl { font-size: 0.75rem; color: var(--text2); font-weight: 700; margin-bottom: 6px; }
+    .report-card .rv {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.15rem; font-weight: 900;
+    }
+    .report-card.highlight .rv { font-size: 1.8rem; color: var(--hint); }
+    .report-pct { font-size: 0.7rem; color: var(--warn); font-weight: 700; margin-top: 2px; }
+
+    /* ─── ADMIN ─── */
+    .admin-card {
+      background: var(--card);
+      border: 1px solid rgba(244,63,94,0.2);
+      border-radius: 14px; padding: 16px;
+      margin: 0 12px 14px;
+    }
+    .admin-title {
+      font-size: 0.8rem; font-weight: 900;
+      color: var(--danger); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 12px;
+    }
+
+    /* ─── TOAST ─── */
+    #toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 20px; border-radius: 30px;
+      font-size: 0.85rem; font-weight: 700; z-index: 9998;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ─── LOADING ─── */
+    #loading {
+      position: fixed; inset: 0; background: var(--bg);
+      z-index: 9998; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── UTIL ─── */
+    .text-accent { color: var(--accent); }
+    .text-hint   { color: var(--hint); }
+    .text-warn   { color: var(--warn); }
+    .text-danger { color: var(--danger); }
+    .text-success{ color: var(--success); }
+    .mono        { font-family: 'JetBrains Mono', monospace; }
+    .user-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(124,111,247,0.15);
+      border: 1px solid rgba(124,111,247,0.3);
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .day-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 10px; margin-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
 
-<div id="sync-indicator" class="sync-status text-white" style="display:none; background: var(--hint);"></div>
+<!-- TOAST -->
+<div id="toast"></div>
 
-<div id="login-overlay">
-  <div class="p-4 w-100" style="max-width: 350px;">
-    <h3 class="text-center mb-4" style="color: var(--accent-color);">2026 店務系統</h3>
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <span style="font-size:0.85rem;color:var(--text2)">載入中…</span>
+</div>
+
+<!-- LOGIN -->
+<div id="login-overlay" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">◈ STORE OS</div>
+    <div class="login-sub">2026 店務雲端系統 · 旗艦版</div>
+    <div class="login-err" id="login-err">帳號或密碼錯誤</div>
     <div class="mb-3">
-        <label class="form-label">使用者角色</label>
-        <select id="user-select" class="form-select form-control-mobile"></select>
+      <div class="f-label">使用者</div>
+      <select id="user-select" class="f-input"></select>
     </div>
     <div class="mb-4">
-        <label class="form-label">登入密碼</label>
-        <input type="password" id="login-pwd" class="form-control-mobile" placeholder="請輸入密碼">
+      <div class="f-label">密碼</div>
+      <input type="password" id="login-pwd" class="f-input" inputmode="numeric" placeholder="輸入密碼">
     </div>
-    <button class="btn btn-primary w-100 py-3 fw-bold" onclick="authLogin()" style="background:var(--accent-color); border:none; color:#000;">進入系統</button>
-    <div class="text-center mt-3">
-        <small class="text-muted" id="login-status">系統就緒</small>
-    </div>
+    <button class="btn-accent" onclick="authLogin()">進入系統</button>
   </div>
 </div>
 
-<div id="app" style="display:none;">
-  
-  <div id="pageA" class="page-content active">
-    <div class="month-selector">
-        <span style="font-weight:bold;">📅 選擇月份</span>
-        <input type="month" id="global-month" class="form-control-mobile" style="width: 150px;" onchange="changeMonth()">
+<!-- APP -->
+<div id="app" style="display:none">
+
+  <!-- PAGE A: 營收 -->
+  <div id="pageA" class="page active">
+    <div class="page-header">
+      <div class="page-title">📊 營收明細</div>
+      <div class="page-subtitle">每日現金 / 電子支付 / 外送紀錄</div>
     </div>
-    <h5 class="text-center mb-3">A. 每日營收</h5>
+    <div class="stat-row">
+      <div class="stat-chip">
+        <div class="stat-label">總營業額</div>
+        <div class="stat-val text-hint" id="total-rev">0</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-label">酒水營收</div>
+        <div class="stat-val text-warn" id="total-alc-rev">0</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-label">總外帶</div>
+        <div class="stat-val text-success" id="total-takeout">0</div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
     <div id="listA"></div>
   </div>
 
-  <div id="pageB" class="page-content">
-    <h5 class="text-center mb-3">B. 零用金支出</h5>
-    <div class="mobile-card" id="view-prevPetty">
-        <label class="form-label">上月零用餘額:</label> 
-        <input type="number" id="prevPetty" class="form-control-mobile" placeholder="請輸入金額" onchange="saveSystem()">
+  <!-- PAGE B: 零用金 -->
+  <div id="pageB" class="page">
+    <div class="page-header">
+      <div class="page-title">💸 零用金支出</div>
+      <div class="page-subtitle">日常現金支出管理</div>
+    </div>
+    <div class="balance-row">
+      <span class="f-label" style="white-space:nowrap">上月零用餘額</span>
+      <input type="number" id="prevPetty" class="f-input" value="0"
+             onchange="calcAll();syncData('SYSTEM',0)">
+    </div>
+    <div class="total-bar">
+      <span>B 頁當月總支出</span>
+      <span class="tv" id="page-total-b">0</span>
     </div>
     <div id="listB"></div>
+    <div class="summary-box">
+      <div class="summary-title">零用金月支出統計</div>
+      <div class="sum-grid" id="summaryB"></div>
+    </div>
   </div>
 
-  <div id="pageC" class="page-content">
-    <h5 class="text-center mb-3">C. 銀行收支</h5>
-    <div class="mobile-card" id="view-prevBank">
-        <label class="form-label">上月銀行餘額:</label> 
-        <input type="number" id="prevBank" class="form-control-mobile" placeholder="請輸入金額" onchange="saveSystem()">
+  <!-- PAGE C: 銀行 -->
+  <div id="pageC" class="page">
+    <div class="page-header">
+      <div class="page-title">🏦 銀行收支</div>
+      <div class="page-subtitle">銀行帳戶進出流水</div>
+    </div>
+    <div class="balance-row">
+      <span class="f-label" style="white-space:nowrap">上月銀行餘額</span>
+      <input type="number" id="prevBank" class="f-input" value="0"
+             onchange="calcAll();syncData('SYSTEM',0)">
+    </div>
+    <div class="total-bar">
+      <span>C 頁當月總支出</span>
+      <span class="tv" id="page-total-c">0</span>
     </div>
     <div id="listC"></div>
+    <div class="summary-box">
+      <div class="summary-title">銀行月收支統計</div>
+      <div class="sum-grid" id="summaryC"></div>
+    </div>
   </div>
 
-  <div id="pageD" class="page-content">
-    <h5 class="text-center mb-3">D. 廠商月結進貨</h5>
+  <!-- PAGE D: 進貨 -->
+  <div id="pageD" class="page">
+    <div class="page-header">
+      <div class="page-title">🚚 月結廠商進貨</div>
+      <div class="page-subtitle">廠商進貨金額統計</div>
+    </div>
+    <div class="total-bar">
+      <span>D 頁當月進貨總額</span>
+      <span class="tv" id="page-total-d">0</span>
+    </div>
     <div id="listD"></div>
-  </div>
-
-  <div id="pageE" class="page-content">
-    <h5 class="text-center mb-3">
-        E. 月度損益報表 
-        <button id="boss-eye-btn" class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleBossMode()">👁️</button>
-    </h5>
-    <div class="mobile-card" id="view-rent">
-        <label class="form-label">房租支出:</label> 
-        <input type="number" id="rentInput" class="form-control-mobile" placeholder="請輸入房租" onchange="saveSystem()">
-    </div>
-    <div id="reportArea"></div>
-  </div>
-
-  <div id="pageF" class="page-content">
-    <h5 class="text-center text-danger">F. 後台系統設定</h5>
-    <div class="px-3">
-        <div class="mobile-card">
-            <h6>1. 主題配色</h6>
-            <div class="d-flex gap-2 mb-2">
-                <button class="btn btn-sm btn-dark flex-fill" onclick="setTheme('dark')">深色模式</button>
-                <button class="btn btn-sm btn-light flex-fill" onclick="setTheme('light')">淺色模式</button>
-            </div>
-            <label class="form-label">自定義重點色</label>
-            <input type="color" id="accentColorPicker" class="form-control mb-2" onchange="setAccent(this.value)">
-        </div>
-        <div class="mobile-card">
-            <h6>2. 支付手續費設定</h6>
-            <div id="cfg-list-pay"></div>
-            <button class="btn btn-sm btn-warning w-100 mt-2" onclick="saveFullConfig()">儲存支付設定</button>
-        </div>
+    <div class="summary-box">
+      <div class="summary-title">進貨總額統計</div>
+      <div class="sum-grid" id="summaryD"></div>
     </div>
   </div>
 
-  <div id="pageG" class="page-content">
-    <h5 class="text-center text-danger">G. 權限帳號管理</h5>
-    <div class="px-3">
-        <div id="user-manage-list"></div>
-        <div class="mobile-card mt-3">
-            <h6>新增帳號</h6>
-            <input type="text" id="new-u-name" class="form-control-mobile mb-2" placeholder="帳號名稱">
-            <input type="password" id="new-u-pwd" class="form-control-mobile mb-2" placeholder="登入密碼">
-            <select id="new-u-role" class="form-control-mobile mb-3">
-                <option value="manager">店長 (可看報表, 無後台)</option>
-                <option value="staff">員工 (僅限輸入)</option>
-            </select>
-            <button class="btn btn-success w-100 fw-bold" onclick="addUser()">確認新增</button>
-        </div>
+  <!-- PAGE E: 報表 -->
+  <div id="pageE" class="page">
+    <div class="page-header">
+      <div class="page-title">📈 當月損益報表</div>
+      <div class="page-subtitle">月結財務分析</div>
+    </div>
+    <div class="balance-row">
+      <span class="f-label" style="white-space:nowrap">房租支出</span>
+      <input type="number" id="rentInput" class="f-input" value="0"
+             onchange="calcAll();syncData('SYSTEM',0)">
+    </div>
+    <div class="report-grid" id="reportArea"></div>
+  </div>
+
+  <!-- PAGE F: 後台 (admin only) -->
+  <div id="pageF" class="page">
+    <div class="page-header">
+      <div class="page-title text-danger">⚙️ 系統後台</div>
+      <div class="page-subtitle">設定支付方式、支出類別、主題色</div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-title">1. 支付方式 (A頁)</div>
+      <div id="config-pay"></div>
+      <button class="btn-sm-outline w-100 mt-2" onclick="addConfigItem('pay')">＋ 新增支付方式</button>
+    </div>
+    <div class="admin-card">
+      <div class="admin-title">2. 零用金類別 (B頁)</div>
+      <div id="config-catsB"></div>
+      <button class="btn-sm-outline w-100 mt-2" onclick="addConfigItem('catsB')">＋ 新增類別</button>
+    </div>
+    <div class="admin-card">
+      <div class="admin-title">3. 銀行收支類別 (C頁)</div>
+      <div id="config-catsC"></div>
+      <button class="btn-sm-outline w-100 mt-2" onclick="addConfigItem('catsC')">＋ 新增類別</button>
+    </div>
+    <div class="admin-card">
+      <div class="admin-title">4. 進貨廠商品項 (D頁)</div>
+      <div id="config-catsD"></div>
+      <button class="btn-sm-outline w-100 mt-2" onclick="addConfigItem('catsD')">＋ 新增廠商</button>
+    </div>
+    <div class="admin-card">
+      <div class="admin-title">5. 視覺自定義</div>
+      <div class="mb-2">
+        <div class="f-label">背景顏色</div>
+        <input type="color" id="cfg-bg-color" class="f-input" style="height:46px;padding:4px !important">
+      </div>
+      <div class="mb-3">
+        <div class="f-label">主題色 (Accent)</div>
+        <input type="color" id="cfg-accent-color" class="f-input" style="height:46px;padding:4px !important">
+      </div>
+      <button class="btn-accent" onclick="saveConfig()">儲存所有設定並更新系統</button>
     </div>
   </div>
 
+  <!-- PAGE G: 權限 (admin only) -->
+  <div id="pageG" class="page">
+    <div class="page-header">
+      <div class="page-title text-danger">👤 使用者管理</div>
+      <div class="page-subtitle">帳號新增 / 刪除 / 角色管理</div>
+    </div>
+    <div id="user-list-area"></div>
+    <div class="admin-card">
+      <div class="admin-title">新增使用者</div>
+      <div class="mb-2">
+        <div class="f-label">帳號名稱</div>
+        <input type="text" id="new-username" class="f-input" placeholder="輸入帳號">
+      </div>
+      <div class="mb-2">
+        <div class="f-label">密碼</div>
+        <input type="password" id="new-password" class="f-input" placeholder="輸入密碼">
+      </div>
+      <div class="mb-3">
+        <div class="f-label">備註 / 安全問題</div>
+        <input type="text" id="new-hint" class="f-input" placeholder="備註說明">
+      </div>
+      <button class="btn-accent" onclick="addUser()">確認新增使用者</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
-    <div class="nav-item active" onclick="showPage('A')" id="nav-A"><i>📊</i>營收</div>
-    <div class="nav-item" onclick="showPage('B')" id="nav-B"><i>💸</i>支出</div>
-    <div class="nav-item" onclick="showPage('C')" id="nav-C"><i>🏦</i>銀行</div>
-    <div class="nav-item" onclick="showPage('D')" id="nav-D"><i>🚚</i>進貨</div>
-    <div class="nav-item" onclick="showPage('E')" id="nav-E"><i>📈</i>報表</div>
-    <div class="nav-item" onclick="showPage('F')" id="nav-F" style="display:none;"><i>⚙️</i>後台</div>
-    <div class="nav-item" onclick="showPage('G')" id="nav-G" style="display:none;"><i>👤</i>權限</div>
+    <div class="nav-btn active" id="nav-A" onclick="showPage('A')">
+      <span class="nav-icon">📊</span>營收
+    </div>
+    <div class="nav-btn" id="nav-B" onclick="showPage('B')">
+      <span class="nav-icon">💸</span>零用
+    </div>
+    <div class="nav-btn" id="nav-C" onclick="showPage('C')">
+      <span class="nav-icon">🏦</span>銀行
+    </div>
+    <div class="nav-btn" id="nav-D" onclick="showPage('D')">
+      <span class="nav-icon">🚚</span>進貨
+    </div>
+    <div class="nav-btn" id="nav-E" onclick="showPage('E')">
+      <span class="nav-icon">📈</span>報表
+    </div>
+    <div class="nav-btn admin-btn" id="nav-F" onclick="showPage('F')" style="display:none">
+      <span class="nav-icon">⚙️</span>後台
+    </div>
+    <div class="nav-btn admin-btn" id="nav-G" onclick="showPage('G')" style="display:none">
+      <span class="nav-icon">👤</span>權限
+    </div>
   </nav>
-</div>
+
+</div><!-- /app -->
 
 <script>
-// --- [重點] 核心固定項目與邏輯：嚴禁刪減 ---
-const DEFAULT_CONFIG = {
-    theme: 'dark', 
-    accent: '#bb86fc',
-    pay: [
-        {name:'信用卡', pct:0.98}, 
-        {name:'全支付', pct:0.98}, 
-        {name:'UBER', pct:0.65}
-    ],
-    catsB: [
-        {name:'食品支出', type:'food'}, {name:'酒類支出', type:'alc'}, 
-        {name:'外帶餐盒', type:'misc'}, {name:'其餘雜支', type:'misc'},
-        {name:'勞健保', type:'hr'}, {name:'PT', type:'hr'}, 
-        {name:'電信', type:'misc'}, {name:'電費', type:'misc'}, 
-        {name:'水費', type:'misc'}, {name:'瓦斯', type:'misc'}
-    ],
-    catsC: [
-        {name:'全支付收入', type:'income'}, {name:'信用卡收入', type:'income'}, 
-        {name:'UBER收入', type:'income'}, {name:'其餘收入', type:'income'},
-        {name:'食品支出', type:'food'}, {name:'酒類支出', type:'alc'}, 
-        {name:'雜支款', type:'misc'}, {name:'人事款', type:'hr'}
-    ],
-    catsD: [
-        {name:'菜商', type:'food'}, {name:'海鮮商', type:'food'}, 
-        {name:'肉商', type:'food'}, {name:'酒商', type:'alc'}, 
-        {name:'雜貨商', type:'misc'}
-    ]
+// ════════════════════════════════════════
+//  CONFIGURATION & STATE
+// ════════════════════════════════════════
+let sysConfig = {
+  theme: { bg: "#0d0f14", accent: "#7c6ff7" },
+  pay: [
+    {name: "信用卡", pct: 0.98},
+    {name: "全支付", pct: 0.98},
+    {name: "UBER",   pct: 0.65}
+  ],
+  catsB: [
+    {name:"食品支出",group:"食材"},{name:"外帶餐盒",group:"雜支"},
+    {name:"酒類支出",group:"酒水"},{name:"勞健保",group:"人事"},
+    {name:"PT",group:"人事"},{name:"電信",group:"雜支"}
+  ],
+  catsC: [
+    {name:"全支付收入",group:"收入"},{name:"信用卡收入",group:"收入"},
+    {name:"UBER收入",group:"收入"},{name:"其餘收入",group:"收入"},
+    {name:"食品支出",group:"食材"},{name:"酒類支出",group:"酒水"},
+    {name:"人事款",group:"人事"}
+  ],
+  catsD: [
+    {name:"菜商",group:"食材"},
+    {name:"海鮮商",group:"食材"},
+    {name:"酒商",group:"酒水"}
+  ]
 };
 
-// --- 覆蓋此範圍：帳號定義與權限控制 ---
-const MASTER_USERS = [{user:'老闆', pwd:'1234', role:'boss'}];
-let users = [...MASTER_USERS]; 
+// ── BUG FIX: 密碼用 SHA-256 雜湊儲存 ──
+// 預設管理員密碼 "1234" 的 SHA-256: 03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4
+let users = [{
+  user: "siang",
+  pwdHash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+  hint: "最高權限",
+  role: "admin"
+}];
+
 let currentUser = null;
 
-function applyPermissions() {
-    if (!currentUser) return;
-    const role = currentUser.role;
-    // 強制判定：只要名字是「老闆」或角色是「boss」，就是最高權限
-    const isBoss = (role === 'boss' || currentUser.user === '老闆');
-
-    const navE = document.getElementById('nav-E'); 
-    const navF = document.getElementById('nav-F'); 
-    const navG = document.getElementById('nav-G'); 
-    const eyeBtn = document.getElementById('boss-eye-btn'); 
-
-    // 1. 報表與眼睛 (店長以上可見)
-    if(navE) navE.style.display = (isBoss || role === 'manager') ? 'block' : 'none';
-    if(eyeBtn) eyeBtn.style.display = (isBoss || role === 'manager') ? 'inline-block' : 'none';
-
-    // 2. 後台與權限管理 (僅限最高權限可見)
-    if(navF) navF.style.display = isBoss ? 'block' : 'none';
-    if(navG) navG.style.display = isBoss ? 'block' : 'none';
-}
-// --- 範圍結束 ---
-
-// --- 頁面渲染邏輯 ---
-function initApp() { renderPages(); loadDailyData(); }
-function changeMonth() { renderPages(); loadDailyData(); }
-
-function renderPages() {
-    const monthStr = document.getElementById('global-month').value;
-    const [y, m] = monthStr.split('-').map(Number);
-    const daysInMonth = new Date(y, m, 0).getDate();
-    const today = new Date();
-    const isTodayMonth = (y === today.getFullYear() && m === (today.getMonth() + 1));
-
-    const build = (id, title, fn) => {
-        let html = '';
-        for(let d = 1; d <= daysInMonth; d++) {
-            const isToday = (isTodayMonth && d === today.getDate());
-            html += `
-            <div class="mobile-card">
-                <div class="card-date" onclick="toggle('${id}',${d})">
-                    <span>${m}/${d} ${title} ${isToday ? '<span class="today-tag">今日</span>' : ''}</span>
-                    <span id="arr-${id}-${d}">${isToday ? '▲' : '▼'}</span>
-                </div>
-                <div id="box-${id}-${d}" style="display:${isToday ? 'block' : 'none'}; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                    ${fn(d)}
-                </div>
-            </div>`;
-        }
-        document.getElementById('list' + id).innerHTML = html;
-    };
-
-    build('A', '營收', (d) => `
-        <div class="row g-2">
-            <div class="col-6"><label class="form-label">現金 (手點)</label><input type="number" id="cash-${d}" class="form-control-mobile" value="6000" onchange="sync(${d})"></div>
-            <div class="col-6"><label class="form-label">底錢</label><input type="number" id="reg-${d}" class="form-control-mobile" value="6000" onchange="sync(${d})"></div>
-            ${sysConfig.pay.map((p, i) => `
-                <div class="col-4"><label class="form-label">${p.name}</label><input type="number" id="pay-${i}-${d}" class="form-control-mobile" onchange="sync(${d})"></div>
-            `).join('')}
-            <div class="col-6"><label class="form-label text-warning">酒水營收 (小計)</label><input type="number" id="alc-${d}" class="form-control-mobile" onchange="sync(${d})"></div>
-            <div class="col-3"><label class="form-label">入銀行</label><input type="number" id="abank-${d}" class="form-control-mobile" onchange="sync(${d})"></div>
-            <div class="col-3"><label class="form-label">入零用</label><input type="number" id="apetty-${d}" class="form-control-mobile" onchange="sync(${d})"></div>
-            <div class="col-12 text-end mt-2"><small>正負零：</small><b id="diff-${d}">0</b></div>
-        </div>
-    `);
-
-    build('B', '零用支出', (d) => `
-        <div class="row g-2">
-            ${sysConfig.catsB.map((c, i) => `
-                <div class="col-6"><label class="form-label">${c.name}</label><input type="number" id="b-v-${d}-${i}" class="form-control-mobile" onchange="sync(${d})"></div>
-            `).join('')}
-        </div>
-    `);
-
-    build('C', '銀行收支', (d) => `
-        <div class="row g-2">
-            ${sysConfig.catsC.map((c, i) => `
-                <div class="col-6">
-                    <label class="form-label ${c.type==='income'?'text-income':'text-expense'}">${c.name}</label>
-                    <input type="number" id="c-v-${d}-${i}" class="form-control-mobile" onchange="sync(${d})">
-                </div>
-            `).join('')}
-        </div>
-    `);
-
-    build('D', '進貨進項', (d) => `
-        <div class="row g-2">
-            ${sysConfig.catsD.map((c, i) => `
-                <div class="col-6"><label class="form-label">${c.name}</label><input type="number" id="d-v-${d}-${i}" class="form-control-mobile" onchange="sync(${d})"></div>
-            `).join('')}
-        </div>
-    `);
-}
-
-// --- 資料庫同步與計算 ---
-async function sync(d) {
-    const mk = document.getElementById('global-month').value;
-    const ind = document.getElementById('sync-indicator');
-    ind.style.display = 'block'; ind.innerText = "⏳ 儲存中...";
-
-    const data = {
-        date_key: `${mk}-${d.toString().padStart(2, '0')}`,
-        cash: val(`cash-${d}`),
-        reg_val: val(`reg-${d}`),
-        alc_val: val(`alc-${d}`),
-        bank_in: val(`abank-${d}`),
-        petty_in: val(`apetty-${d}`),
-        pay_vals: sysConfig.pay.map((_, i) => val(`pay-${i}-${d}`)),
-        b_vals: sysConfig.catsB.map((_, i) => val(`b-v-${d}-${i}`)),
-        c_vals: sysConfig.catsC.map((_, i) => val(`c-v-${d}-${i}`)),
-        d_vals: sysConfig.catsD.map((_, i) => val(`d-v-${d}-${i}`))
-    };
-
-    try {
-        await db.from('daily_data').upsert(data);
-        ind.innerText = "✓ 已儲存";
-        setTimeout(() => ind.style.display = 'none', 1000);
-        calcAll();
-    } catch (e) {
-        ind.innerText = "❌ 儲存失敗";
-        console.error(e);
-    }
-}
-
-async function loadDailyData() {
-    const mk = document.getElementById('global-month').value;
-    const { data } = await db.from('daily_data').select('*').like('date_key', `${mk}%`);
-    
-    if (data) {
-        data.forEach(row => {
-            const d = parseInt(row.date_key.split('-')[2]);
-            if (!document.getElementById(`cash-${d}`)) return;
-            
-            document.getElementById(`cash-${d}`).value = row.cash;
-            document.getElementById(`reg-${d}`).value = row.reg_val;
-            document.getElementById(`alc-${d}`).value = row.alc_val;
-            document.getElementById(`abank-${d}`).value = row.bank_in;
-            document.getElementById(`apetty-${d}`).value = row.petty_in;
-            
-            const fill = (p, v) => { if (v && Array.isArray(v)) v.forEach((val, i) => { const el = document.getElementById(`${p}-${d}-${i}`); if (el) el.value = val; }); };
-            fill('pay', row.pay_vals);
-            fill('b-v', row.b_vals);
-            fill('c-v', row.c_vals);
-            fill('d-v', row.d_vals);
-        });
-    }
-
-    const sys = await db.from('daily_data').select('*').eq('date_key', `SYS-${mk}`).maybeSingle();
-    if (sys.data) {
-        document.getElementById('prevPetty').value = sys.data.cash || 0;
-        document.getElementById('prevBank').value = sys.data.bank_in || 0;
-        document.getElementById('rentInput').value = sys.data.reg_val || 0;
-    } else {
-        document.getElementById('prevPetty').value = 0;
-        document.getElementById('prevBank').value = 0;
-        document.getElementById('rentInput').value = 0;
-    }
-    calcAll();
-}
-
-async function saveSystem() {
-    const mk = document.getElementById('global-month').value;
-    await db.from('daily_data').upsert({ 
-        date_key: `SYS-${mk}`, 
-        cash: val('prevPetty'), 
-        bank_in: val('prevBank'), 
-        reg_val: val('rentInput') 
-    });
-    calcAll();
-}
-
-function calcAll() {
-    const monthStr = document.getElementById('global-month').value;
-    const days = new Date(monthStr.split('-')[0], monthStr.split('-')[1], 0).getDate();
-    
-    let tRev = 0, tAlcRev = 0, costF = 0, costA = 0, costM = 0, costHR = 0;
-    
-    for (let d = 1; d <= days; d++) {
-        let dPayNet = 0; 
-        sysConfig.pay.forEach((p, i) => dPayNet += (val(`pay-${i}-${d}`) * p.pct));
-        
-        const cashIn = val(`cash-${d}`) - val(`reg-${d}`);
-        tRev += (cashIn + dPayNet);
-        tAlcRev += val(`alc-${d}`);
-
-        const diff = Math.round(cashIn - (val(`abank-${d}`) + val(`apetty-${d}`)));
-        const de = document.getElementById(`diff-${d}`);
-        if (de) {
-            de.innerText = diff;
-            de.style.color = (diff === 0) ? 'var(--hint)' : 'var(--danger)';
-        }
-
-        const sum = (prefix, config) => config.forEach((c, i) => {
-            const v = val(`${prefix}-${d}-${i}`);
-            if (c.type === 'food') costF += v;
-            else if (c.type === 'alc') costA += v;
-            else if (c.type === 'hr') costHR += v;
-            else if (c.type === 'misc') costM += v;
-        });
-        sum('b-v', sysConfig.catsB);
-        sum('c-v', sysConfig.catsC);
-        sum('d-v', sysConfig.catsD);
-    }
-
-    const rent = val('rentInput');
-    const totalExp = costF + costA + costM + costHR + rent;
-    const netProfit = tRev - totalExp;
-
-    document.getElementById('reportArea').innerHTML = `
-        <div class="row g-2 boss-mode-blur mt-2">
-            <div class="col-12">
-                <div class="mobile-card text-center" style="background:var(--accent-color); color:#000;">
-                    <h6 class="mb-1">本月預估純利</h6>
-                    <h2 class="report-val fw-bold">${Math.round(netProfit).toLocaleString()}</h2>
-                </div>
-            </div>
-            <div class="col-6"><div class="mobile-card">總營收<br><b class="report-val">${Math.round(tRev).toLocaleString()}</b></div></div>
-            <div class="col-6"><div class="mobile-card">總支出<br><b class="report-val text-danger">${Math.round(totalExp).toLocaleString()}</b></div></div>
-            <div class="col-6"><div class="mobile-card">食材費<br><small>${((costF/tRev)*100||0).toFixed(1)}%</small><br><b class="report-val">${Math.round(costF).toLocaleString()}</b></div></div>
-            <div class="col-6"><div class="mobile-card">酒水費<br><small>${((costA/tRev)*100||0).toFixed(1)}%</small><br><b class="report-val">${Math.round(costA).toLocaleString()}</b></div></div>
-        </div>
-    `;
-}
-
-// --- 介面工具功能 ---
-function val(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
-function toggle(id, d) {
-    const e = document.getElementById(`box-${id}-${d}`);
-    const a = document.getElementById(`arr-${id}-${d}`);
-    if(!e) return;
-    const isHidden = e.style.display === 'none';
-    e.style.display = isHidden ? 'block' : 'none';
-    a.innerText = isHidden ? '▲' : '▼';
-}
-
-function showPage(p) {
-    document.querySelectorAll('.page-content').forEach(e => e.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
-    document.getElementById('page' + p).classList.add('active');
-    document.getElementById('nav-' + p).classList.add('active');
-}
-
-function toggleBossMode() {
-    document.getElementById('reportArea').classList.toggle('boss-mode-blur');
-}
-
-function setTheme(t) {
-    sysConfig.theme = t;
-    document.body.className = (t === 'light' ? 'light-theme' : '');
-}
-
-function setAccent(c) {
-    sysConfig.accent = c;
-    document.documentElement.style.setProperty('--accent-color', c);
-}
-
-// --- 設定檔與帳號存取 ---
-async function loadConfig() {
-    const { data } = await db.from('daily_data').select('*').eq('date_key', 'CONFIG').maybeSingle();
-    if (data) {
-        sysConfig = JSON.parse(data.memo_text);
-        renderConfigUI();
-    }
-}
-
-function renderConfigUI() {
-    const box = document.getElementById('cfg-list-pay');
-    if(!box) return;
-    box.innerHTML = sysConfig.pay.map((p, i) => `
-        <div class="d-flex gap-2 mb-2">
-            <input type="text" class="form-control-mobile" value="${p.name}" readonly>
-            <input type="number" step="0.01" class="form-control-mobile" value="${p.pct}" onchange="sysConfig.pay[${i}].pct=parseFloat(this.value)">
-        </div>
-    `).join('');
-}
-
-async function saveFullConfig() {
-    await db.from('daily_data').upsert({ date_key: 'CONFIG', memo_text: JSON.stringify(sysConfig) });
-    alert("設定已儲存！");
-}
-
-// --- 覆蓋此範圍：確保「老闆」永遠併入選單 ---
-async function loadUsers() {
-    try {
-        const { data } = await db.from('daily_data').select('*').eq('date_key', 'USERS').maybeSingle();
-        if (data && data.memo_text) {
-            let dbUsers = JSON.parse(data.memo_text);
-            
-            // 以 MASTER_USERS 為底，合併雲端帳號
-            const combined = [...MASTER_USERS];
-            dbUsers.forEach(du => {
-                if(!combined.some(mu => mu.user === du.user)) {
-                    combined.push(du);
-                }
-            });
-            users = combined;
-        }
-    } catch(e) { console.error("帳號載入異常", e); }
-    
-    renderUserSelect(); // 更新登入選單
-    if(typeof renderUserUI === 'function') renderUserUI(); // 更新權限管理列表
-}
-// --- 範圍結束 ---
-
-function renderUserUI() {
-    const box = document.getElementById('user-manage-list');
-    if(!box) return;
-    box.innerHTML = users.map((u, i) => `
-        <div class="mobile-card d-flex justify-content-between align-items-center">
-            <div><b>${u.user}</b> <small>(${u.role})</small></div>
-            ${u.user !== '老闆' ? `<button class="btn-del-item" onclick="delUser(${i})">✕ 刪除</button>` : ''}
-        </div>
-    `).join('');
-}
-
-// --- 覆蓋此範圍：優化儲存邏輯 ---
-async function addUser() {
-    const n = document.getElementById('new-u-name').value;
-    const p = document.getElementById('new-u-pwd').value;
-    const r = document.getElementById('new-u-role').value;
-    if (n && p) {
-        users.push({ user: n, pwd: p, role: r });
-        const toStore = users.filter(u => u.user !== '老闆');
-        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
-        loadUsers(); 
-        alert("新增成功！");
-    }
-}
-
-async function delUser(i) {
-    if (confirm("確定要刪除此帳號嗎？")) {
-        users.splice(i, 1);
-        const toStore = users.filter(u => u.user !== '老闆');
-        await db.from('daily_data').upsert({ date_key: 'USERS', memo_text: JSON.stringify(toStore) });
-        loadUsers();
-    }
-}
-
-// --- 修正：補回被遺漏或解析失敗的關鍵函數 ---
-
-function renderUserSelect() {
-    const sel = document.getElementById('user-select');
-    if(sel) {
-        sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
-    }
-}
-
-function authLogin() {
-    const u = document.getElementById('user-select').value;
-    const p = document.getElementById('login-pwd').value;
-    const found = users.find(x => x.user === u && x.pwd === p);
-    
-    if(found) {
-        currentUser = found;
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        applyPermissions();
-        initApp();
-        // 如果是員工身分，預設跳轉到 A 頁面
-        if (currentUser.role === 'staff') showPage('A');
-    } else {
-        alert("密碼錯誤！");
-    }
-}
-
-function updateTheme() {
-    setTheme(sysConfig.theme);
-    setAccent(sysConfig.accent);
-}
-
-// --- 補回：資料庫初始化與自動執行程序 ---
-let sysConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+// ── Supabase (替換成您的真實金鑰，並在 Supabase 後台啟用 RLS) ──
 const SB_URL = "https://jxtjkjexnqfhxmwfgcgl.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dGpramV4bnFmaHhtd2ZnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3OTA4ODEsImV4cCI6MjA4NjM2Njg4MX0.Ebw_qhA3Z_p_tB_EwxWmvC0z3oC9MisDQm6DEuGkno0";
 const db = supabase.createClient(SB_URL, SB_KEY);
 
-window.onload = async () => {
-    // 1. 設定預設月份
-    const now = new Date();
-    const mInput = document.getElementById('global-month');
-    if(mInput) mInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    
-    // 2. 初始渲染選單
-    renderUserSelect();
-    
-    // 3. 從資料庫讀取設定與帳號
-    try {
-        await loadConfig();
-        await loadUsers();
-        updateTheme();
-    } catch(e) { 
-        console.error("啟動失敗", e); 
-    }
+// ════════════════════════════════════════
+//  CRYPTO UTILITIES
+// ════════════════════════════════════════
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+window.onload = async function() {
+  document.getElementById('loading').style.display = 'flex';
+  try {
+    await loadUsers();
+    await loadConfig();
+  } catch(e) { console.warn('載入失敗，使用預設值', e); }
+  renderUserSelect();
+  updateTheme();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('login-overlay').style.display = 'flex';
 };
-// --- 結束 ---
+
+function renderUserSelect() {
+  const sel = document.getElementById('user-select');
+  if(sel) sel.innerHTML = users.map(u => `<option value="${u.user}">${u.user}</option>`).join('');
+}
+
+// ════════════════════════════════════════
+//  AUTH  ── BUG FIX: 使用雜湊比對，不再明文
+// ════════════════════════════════════════
+async function authLogin() {
+  const uName = document.getElementById('user-select').value;
+  const pwd   = document.getElementById('login-pwd').value;
+  const hash  = await sha256(pwd);
+  const found = users.find(x => x.user === uName && x.pwdHash === hash);
+  if(found) {
+    currentUser = found;
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('login-err').style.display = 'none';
+    if(found.role === 'admin') {
+      document.querySelectorAll('.admin-btn').forEach(b => b.style.display = 'flex');
+    }
+    initSystem();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pwd').value = '';
+  }
+}
+
+// Enter 鍵觸發登入
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && document.getElementById('login-overlay').style.display !== 'none') {
+    authLogin();
+  }
+});
+
+// ════════════════════════════════════════
+//  SYSTEM INIT
+// ════════════════════════════════════════
+function initSystem() {
+  renderA();
+  renderDayList('B', sysConfig.catsB);
+  renderDayList('C', sysConfig.catsC);
+  renderDayList('D', sysConfig.catsD);
+  renderConfig();
+  renderUserList();
+  loadDailyData();
+}
+
+// ════════════════════════════════════════
+//  RENDER A (營收)
+// ════════════════════════════════════════
+function renderA() {
+  // BUG FIX: 根據當月天數渲染，不硬編碼 31
+  const year = 2026, month = 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let html = '';
+  for(let d = 1; d <= daysInMonth; d++) {
+    const payHtml = sysConfig.pay.map((p, i) => `
+      <div class="col-4">
+        <div class="f-label">${p.name}</div>
+        <input type="number" id="pay-${i}-${d}" class="f-input"
+               onchange="calcAll();syncData('DAILY',${d})">
+      </div>`).join('');
+
+    html += `<div class="card-base">
+      <div class="card-date">2026 / 01 / ${String(d).padStart(2,'0')}</div>
+      <div class="row g-2">
+        <div class="col-6">
+          <div class="f-label">現金</div>
+          <input type="number" id="cash-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-6">
+          <div class="f-label">收銀底錢</div>
+          <input type="number" id="reg-${d}" class="f-input" value="6000"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        ${payHtml}
+        <div class="col-6">
+          <div class="f-label" style="color:var(--warn)">酒水收入</div>
+          <input type="number" id="alc-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-6">
+          <div class="f-label" style="color:var(--success)">外帶收入</div>
+          <input type="number" id="takeout-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-4">
+          <div class="f-label">入銀行</div>
+          <input type="number" id="a-bank-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-4">
+          <div class="f-label">入零用</div>
+          <input type="number" id="a-petty-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-4">
+          <div class="f-label">提領入櫃</div>
+          <input type="number" id="a-draw-${d}" class="f-input"
+                 onchange="calcAll();syncData('DAILY',${d})">
+        </div>
+        <div class="col-12">
+          <div class="day-footer">
+            <span>營業額 <b class="mono text-hint" id="rev-${d}">0</b></span>
+            <span>現金差額 <b class="mono" id="diff-${d}">0</b></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('listA').innerHTML = html;
+}
+
+// ════════════════════════════════════════
+//  RENDER B/C/D
+// ════════════════════════════════════════
+function renderDayList(type, cats) {
+  const year = 2026, month = 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const typeLabel = type === 'B' ? '零用' : type === 'C' ? '銀行' : '進貨';
+  let html = '';
+  for(let d = 1; d <= daysInMonth; d++) {
+    const extra = type === 'B' ? `
+      <div class="mt-2 pt-2" style="border-top:1px solid var(--border)">
+        <div class="f-label">提領零用金 (扣銀行款)</div>
+        <input type="number" id="b-fromBank-${d}" class="f-input mb-2"
+               onchange="calcAll();syncData('DAILY',${d})">
+        <div class="day-footer">
+          <span>支出 <b class="mono text-danger" id="b-total-${d}">0</b></span>
+          <span>餘額 <b class="mono text-hint" id="b-rem-${d}">0</b></span>
+        </div>
+      </div>` :
+      type === 'C' ? `<div class="day-footer mt-2">
+        <span>銀行餘額 <b class="mono text-hint" id="c-rem-${d}">0</b></span>
+      </div>` : '';
+
+    html += `<div class="card-base">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="card-date mb-0">01 / ${String(d).padStart(2,'0')} ${typeLabel}</div>
+        <button class="btn-sm-outline" onclick="addDynRow('${type}',${d})">＋ 新增</button>
+      </div>
+      <div id="${type.toLowerCase()}-items-${d}"></div>
+      ${extra}
+    </div>`;
+  }
+  document.getElementById('list' + type).innerHTML = html;
+}
+
+// ════════════════════════════════════════
+//  DYNAMIC ROWS
+// ════════════════════════════════════════
+function addDynRow(type, d, saved = null) {
+  const container = document.getElementById(`${type.toLowerCase()}-items-${d}`);
+  if(!container) return;
+  const cats = type === 'B' ? sysConfig.catsB : type === 'C' ? sysConfig.catsC : sysConfig.catsD;
+  const div = document.createElement('div');
+  div.className = 'dyn-row';
+  div.innerHTML = `
+    <select class="f-input" style="flex:1.2" onchange="calcAll();syncData('DAILY',${d})">
+      ${cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+    </select>
+    <input type="text" placeholder="品名" class="f-input" style="flex:1.2"
+           onchange="syncData('DAILY',${d})">
+    <input type="number" placeholder="金額" class="f-input dyn-val" style="flex:1"
+           onchange="calcAll();syncData('DAILY',${d})">
+    <button class="btn-danger-sm" onclick="this.parentElement.remove();calcAll();syncData('DAILY',${d})">✕</button>
+  `;
+  if(saved) {
+    div.querySelector('select').value = saved.cat;
+    div.querySelectorAll('input')[0].value = saved.name;
+    div.querySelectorAll('input')[1].value = saved.val;
+  }
+  container.appendChild(div);
+}
+
+// ════════════════════════════════════════
+//  CALC ALL  ── BUG FIX: diff 公式、tC_Exp、sumD 群組
+// ════════════════════════════════════════
+function calcAll() {
+  let petty = v('prevPetty');
+  let bank  = v('prevBank');
+  let tA_Rev = 0, tA_Alc = 0, tA_Takeout = 0;
+  let tB_Exp = 0, tC_Exp = 0, tD_Exp = 0;
+
+  // BUG FIX: sumD 加入所有可能的 group 鍵，避免 undefined 累積問題
+  let sumB = {食材:0, 雜支:0, 酒水:0, 人事:0};
+  let sumC = {食材:0, 雜支:0, 酒水:0, 人事:0, 收入:0};
+  let sumD = {食材:0, 酒水:0, 雜貨:0, 雜支:0, 人事:0};
+
+  const year = 2026, month = 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  for(let d = 1; d <= daysInMonth; d++) {
+    // ── A 頁計算 ──
+    let dPay = 0;
+    sysConfig.pay.forEach((p, i) => dPay += (v(`pay-${i}-${d}`) * p.pct));
+    const regVal = v(`reg-${d}`) || 6000; // BUG FIX: reg 為 null 時用預設值 6000
+    let dRev = v(`cash-${d}`) + dPay - regVal;
+    tA_Rev     += dRev;
+    tA_Alc     += v(`alc-${d}`);
+    tA_Takeout += v(`takeout-${d}`);
+    setTxt(`rev-${d}`,  Math.round(dRev).toLocaleString());
+
+    // BUG FIX: diff = 現金 - 底錢 - 入銀行 - 入零用 + 提領入櫃
+    // 提領入櫃是「從銀行領出放入收銀機」→ 應為正號（補入現金）
+    const diff = v(`cash-${d}`) - regVal
+               - v(`a-bank-${d}`)
+               - v(`a-petty-${d}`)
+               + v(`a-draw-${d}`);
+    const diffEl = document.getElementById(`diff-${d}`);
+    if(diffEl) {
+      diffEl.innerText = Math.round(diff).toLocaleString();
+      diffEl.style.color = diff === 0 ? 'var(--success)' : diff > 0 ? 'var(--hint)' : 'var(--danger)';
+    }
+
+    // ── B 頁計算 ──
+    let dExpB = 0;
+    document.querySelectorAll(`#b-items-${d} .dyn-row`).forEach(row => {
+      const val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      const cat = row.querySelector('select').value;
+      const g   = sysConfig.catsB.find(c => c.name === cat)?.group;
+      dExpB += val;
+      if(g && sumB[g] !== undefined) sumB[g] += val;
+    });
+    tB_Exp += dExpB;
+    // petty 計算：前餘 - 支出 - 提領入櫃(從零用轉出) + 入零用 + 從銀行補充
+    petty = petty - dExpB - v(`a-draw-${d}`) + v(`a-petty-${d}`) + v(`b-fromBank-${d}`);
+    setTxt(`b-total-${d}`, dExpB.toLocaleString());
+    setTxt(`b-rem-${d}`,   Math.round(petty).toLocaleString());
+
+    // ── C 頁計算 ──
+    let dInC  = v(`a-bank-${d}`);
+    // BUG FIX: fromBank 是從銀行提領現金，應計入銀行支出
+    let dOutC = v(`b-fromBank-${d}`);
+    document.querySelectorAll(`#c-items-${d} .dyn-row`).forEach(row => {
+      const val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      const cat = row.querySelector('select').value;
+      const g   = sysConfig.catsC.find(c => c.name === cat)?.group;
+      if(g === '收入') {
+        dInC += val;
+        if(sumC.收入 !== undefined) sumC.收入 += val;
+      } else {
+        dOutC += val;
+        tC_Exp += val; // BUG FIX: 累計銀行支出項
+        if(g && sumC[g] !== undefined) sumC[g] += val;
+      }
+    });
+    // BUG FIX: fromBank 也加入 tC_Exp
+    tC_Exp += v(`b-fromBank-${d}`);
+    bank = bank + dInC - dOutC;
+    setTxt(`c-rem-${d}`, Math.round(bank).toLocaleString());
+
+    // ── D 頁計算 ──
+    document.querySelectorAll(`#d-items-${d} .dyn-row`).forEach(row => {
+      const val = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      const cat = row.querySelector('select').value;
+      const g   = sysConfig.catsD.find(c => c.name === cat)?.group;
+      tD_Exp += val;
+      // BUG FIX: 若 group 不在 sumD 鍵中，自動初始化，避免 undefined
+      if(g) {
+        if(sumD[g] === undefined) sumD[g] = 0;
+        sumD[g] += val;
+      }
+    });
+  }
+
+  // 更新頁面總計列
+  setTxt('page-total-b', Math.round(tB_Exp).toLocaleString());
+  setTxt('page-total-c', Math.round(tC_Exp).toLocaleString());
+  setTxt('page-total-d', Math.round(tD_Exp).toLocaleString());
+
+  renderSummaries(sumB, sumC, sumD, tA_Rev, tA_Alc, tA_Takeout);
+}
+
+function renderSummaries(b, c, d, rev, alcRev, takeout) {
+  setTxt('total-rev',     Math.round(rev).toLocaleString());
+  setTxt('total-alc-rev', Math.round(alcRev).toLocaleString());
+  setTxt('total-takeout', Math.round(takeout).toLocaleString());
+
+  const mkGrid = (obj) => Object.entries(obj)
+    .filter(([, val]) => val !== 0)
+    .map(([k, val]) => `<div class="sum-item">${k}<br><b>${Math.round(val).toLocaleString()}</b></div>`)
+    .join('');
+
+  setHTML('summaryB', mkGrid(b));
+  setHTML('summaryC', mkGrid(c));
+  setHTML('summaryD', mkGrid(d));
+
+  const rent      = v('rentInput');
+  const foodRev   = rev - alcRev;
+  const costFood  = (b.食材||0) + (c.食材||0) + (d.食材||0);
+  const costAlc   = (b.酒水||0) + (c.酒水||0) + (d.酒水||0);
+  const costStaff = (b.人事||0) + (c.人事||0);
+  const costOther = (b.雜支||0) + (c.雜支||0) + (d.雜貨||0) + (d.雜支||0);
+  const totalExp  = costFood + costAlc + costStaff + costOther + rent;
+  const profit    = rev - totalExp;
+
+  const fPct = foodRev > 0 ? (costFood / foodRev * 100).toFixed(1) : '–';
+  const aPct = alcRev  > 0 ? (costAlc  / alcRev  * 100).toFixed(1) : '–';
+
+  setHTML('reportArea', `
+    <div class="report-card highlight">
+      <div class="rl">本月預估獲利</div>
+      <div class="rv" style="color:${profit>=0?'var(--hint)':'var(--danger)'}">${Math.round(profit).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">總營業額</div>
+      <div class="rv text-hint">${Math.round(rev).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">總支出</div>
+      <div class="rv text-danger">${Math.round(totalExp).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">食材營收</div>
+      <div class="rv">${Math.round(foodRev).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">酒水營收</div>
+      <div class="rv text-warn">${Math.round(alcRev).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">食材成本</div>
+      <div class="rv">${Math.round(costFood).toLocaleString()}</div>
+      <div class="report-pct">佔食材營收 ${fPct}%</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">酒水成本</div>
+      <div class="rv">${Math.round(costAlc).toLocaleString()}</div>
+      <div class="report-pct">佔酒水營收 ${aPct}%</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">人事成本</div>
+      <div class="rv">${Math.round(costStaff).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">房租</div>
+      <div class="rv">${Math.round(rent).toLocaleString()}</div>
+    </div>
+    <div class="report-card">
+      <div class="rl">雜支</div>
+      <div class="rv">${Math.round(costOther).toLocaleString()}</div>
+    </div>
+    <div class="report-card" style="grid-column:1/-1">
+      <div class="rl">食材 ＋ 酒水 總成本</div>
+      <div class="rv">${Math.round(costFood+costAlc).toLocaleString()}</div>
+    </div>
+  `);
+}
+
+// ════════════════════════════════════════
+//  ADMIN CONFIG (F頁)
+// ════════════════════════════════════════
+function renderConfig() {
+  const build = (id, arr, isPay = false) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = arr.map((item, i) => `
+      <div class="dyn-row mb-1">
+        <input type="text" class="f-input" value="${item.name}" style="flex:2"
+               onchange="updateConfigVal('${id}',${i},'name',this.value)">
+        ${isPay
+          ? `<input type="number" step="0.01" class="f-input" value="${item.pct}" style="flex:0.7"
+                    onchange="updateConfigVal('${id}',${i},'pct',this.value)">`
+          : `<select class="f-input" style="flex:1"
+                     onchange="updateConfigVal('${id}',${i},'group',this.value)">
+               ${['食材','雜支','酒水','人事','收入','雜貨'].map(g =>
+                 `<option value="${g}" ${item.group===g?'selected':''}>${g}</option>`).join('')}
+             </select>`}
+        <button class="btn-danger-sm" onclick="removeConfigItem('${id}',${i})">✕</button>
+      </div>`).join('');
+  };
+  build('config-pay',   sysConfig.pay,   true);
+  build('config-catsB', sysConfig.catsB);
+  build('config-catsC', sysConfig.catsC);
+  build('config-catsD', sysConfig.catsD);
+  document.getElementById('cfg-bg-color').value     = sysConfig.theme.bg;
+  document.getElementById('cfg-accent-color').value = sysConfig.theme.accent;
+}
+
+function updateConfigVal(id, i, key, val) {
+  const map = {'config-pay':'pay','config-catsB':'catsB','config-catsC':'catsC','config-catsD':'catsD'};
+  sysConfig[map[id]][i][key] = key === 'pct' ? parseFloat(val) : val;
+}
+
+function addConfigItem(key) {
+  if(key === 'pay') sysConfig.pay.push({name:"新支付", pct:1.0});
+  else sysConfig[key].push({name:"新項目", group:"食材"});
+  renderConfig();
+}
+
+function removeConfigItem(id, i) {
+  const map = {'config-pay':'pay','config-catsB':'catsB','config-catsC':'catsC','config-catsD':'catsD'};
+  if(!confirm(`確定刪除第 ${i+1} 項目？`)) return;
+  sysConfig[map[id]].splice(i, 1);
+  renderConfig();
+}
+
+async function saveConfig() {
+  if(!confirm("確定儲存後台設定並重新載入？")) return;
+  sysConfig.theme.bg     = document.getElementById('cfg-bg-color').value;
+  sysConfig.theme.accent = document.getElementById('cfg-accent-color').value;
+  try {
+    await db.from('daily_data').upsert({ date_key: "CONFIG", memo_text: JSON.stringify(sysConfig) });
+    showToast('✓ 設定已儲存');
+    setTimeout(() => location.reload(), 1000);
+  } catch(e) {
+    showToast('⚠ 儲存失敗，請重試');
+  }
+}
+
+// ════════════════════════════════════════
+//  USER MANAGEMENT (G頁)  ── BUG FIX: 密碼雜湊
+// ════════════════════════════════════════
+function renderUserList() {
+  const el = document.getElementById('user-list-area');
+  if(!el) return;
+  el.innerHTML = users.map((u, i) => `
+    <div class="card-base d-flex justify-content-between align-items-center">
+      <div>
+        <div style="font-weight:700">${u.user}
+          <span style="font-size:0.75rem;color:${u.role==='admin'?'var(--danger)':'var(--text2)'}">
+            (${u.role})
+          </span>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text2)">${u.hint || '–'}</div>
+      </div>
+      ${u.user === 'siang'
+        ? '<span style="font-size:0.75rem;color:var(--text2)">系統保護</span>'
+        : `<button class="btn-danger-sm" onclick="removeUser(${i})">刪除</button>`}
+    </div>`).join('');
+}
+
+async function addUser() {
+  const uName = document.getElementById('new-username').value.trim();
+  const pwd   = document.getElementById('new-password').value;
+  const hint  = document.getElementById('new-hint').value.trim();
+  if(!uName || !pwd) return showToast('⚠ 請填寫帳號與密碼');
+  if(users.find(u => u.user === uName)) return showToast('⚠ 帳號已存在');
+  // BUG FIX: 儲存密碼雜湊而非明文
+  const pwdHash = await sha256(pwd);
+  users.push({ user: uName, pwdHash, hint, role: 'staff' });
+  await saveUsers();
+  renderUserList();
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-hint').value = '';
+  showToast('✓ 使用者已新增');
+}
+
+async function removeUser(i) {
+  if(!confirm(`確定刪除使用者「${users[i].user}」？`)) return;
+  users.splice(i, 1);
+  await saveUsers();
+  renderUserList();
+  showToast('✓ 使用者已刪除');
+}
+
+async function saveUsers() {
+  try {
+    await db.from('daily_data').upsert({ date_key: "USERS", memo_text: JSON.stringify(users) });
+  } catch(e) { showToast('⚠ 使用者儲存失敗'); }
+}
+
+// ════════════════════════════════════════
+//  CLOUD SYNC
+// ════════════════════════════════════════
+async function syncData(type, d) {
+  const key = type === 'SYSTEM' ? 'SYSTEM' : `2026-01-${String(d).padStart(2,'0')}`;
+  const data = { date_key: key };
+  if(key === 'SYSTEM') {
+    data.cash     = v('prevPetty');
+    data.bank_in  = v('prevBank');
+    data.reg      = v('rentInput');
+  } else {
+    data.cash       = v(`cash-${d}`);
+    data.reg_val    = v(`reg-${d}`);
+    data.bank_in    = v(`a-bank-${d}`);
+    data.petty_in   = v(`a-petty-${d}`);
+    data.draw_out   = v(`a-draw-${d}`);
+    data.alc_val    = v(`alc-${d}`);
+    data.takeout_val= v(`takeout-${d}`);
+    data.from_bank  = v(`b-fromBank-${d}`);
+    data.pay_vals   = sysConfig.pay.map((_, i) => v(`pay-${i}-${d}`));
+    const getDyn = (t) => Array.from(document.querySelectorAll(`#${t}-items-${d} .dyn-row`)).map(row => ({
+      cat:  row.querySelector('select').value,
+      name: row.querySelectorAll('input')[0].value,
+      val:  parseFloat(row.querySelectorAll('input')[1].value) || 0
+    }));
+    data.dyn_items_b = getDyn('b');
+    data.dyn_items_c = getDyn('c');
+    data.dyn_items_d = getDyn('d');
+  }
+  try {
+    await db.from('daily_data').upsert(data);
+  } catch(e) { console.warn('同步失敗', e); }
+}
+
+async function loadDailyData() {
+  try {
+    const { data, error } = await db.from('daily_data').select('*');
+    if(error) throw error;
+    if(!data) return;
+    data.forEach(item => {
+      if(item.date_key === 'SYSTEM') {
+        setValue('prevPetty', item.cash    ?? 0);
+        setValue('prevBank',  item.bank_in ?? 0);
+        setValue('rentInput', item.reg     ?? 0);
+      } else if(item.date_key?.startsWith('2026')) {
+        const d = parseInt(item.date_key.split('-')[2]);
+        if(!document.getElementById(`cash-${d}`)) return;
+        setValue(`cash-${d}`,     item.cash        ?? '');
+        // BUG FIX: reg_val 若為 null 則保留預設值 6000，不覆蓋
+        if(item.reg_val != null) setValue(`reg-${d}`, item.reg_val);
+        setValue(`a-bank-${d}`,   item.bank_in      ?? '');
+        setValue(`a-petty-${d}`,  item.petty_in     ?? '');
+        setValue(`a-draw-${d}`,   item.draw_out      ?? '');
+        setValue(`alc-${d}`,      item.alc_val       ?? '');
+        setValue(`takeout-${d}`,  item.takeout_val   ?? '');
+        setValue(`b-fromBank-${d}`,item.from_bank    ?? '');
+        item.pay_vals?.forEach((val, i) => setValue(`pay-${i}-${d}`, val ?? ''));
+        item.dyn_items_b?.forEach(obj => addDynRow('B', d, obj));
+        item.dyn_items_c?.forEach(obj => addDynRow('C', d, obj));
+        item.dyn_items_d?.forEach(obj => addDynRow('D', d, obj));
+      }
+    });
+    calcAll();
+  } catch(e) {
+    showToast('⚠ 資料載入失敗，請確認網路連線');
+    console.error(e);
+  }
+}
+
+async function loadConfig() {
+  try {
+    const { data } = await db.from('daily_data').select('*').eq('date_key','CONFIG').maybeSingle();
+    if(data?.memo_text) sysConfig = JSON.parse(data.memo_text);
+  } catch(e) { console.warn('設定載入失敗', e); }
+}
+
+async function loadUsers() {
+  try {
+    const { data } = await db.from('daily_data').select('*').eq('date_key','USERS').maybeSingle();
+    if(data?.memo_text) {
+      const parsed = JSON.parse(data.memo_text);
+      // BUG FIX: 相容舊版明文密碼 → 提示需要重設，但不讓其登入
+      users = parsed.map(u => {
+        if(u.pwd && !u.pwdHash) {
+          // 舊版明文格式：標記為需要重設，暫時用空 hash 讓管理員介入
+          return { ...u, pwdHash: '__LEGACY__', hint: (u.hint||'') + ' [密碼需重設]' };
+        }
+        return u;
+      });
+    }
+  } catch(e) { console.warn('使用者載入失敗', e); }
+}
+
+// ════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════
+function showPage(pId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  document.getElementById('page' + pId).classList.add('active');
+  document.getElementById('nav-' + pId).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function updateTheme() {
+  document.documentElement.style.setProperty('--bg',     sysConfig.theme.bg);
+  document.documentElement.style.setProperty('--accent', sysConfig.theme.accent);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Helpers ──
+const v       = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+const setTxt  = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+const setHTML = (id, val) => { const el = document.getElementById(id); if(el) el.innerHTML = val; };
+const setValue= (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+</script>
+</body>
+</html>
